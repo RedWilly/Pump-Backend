@@ -1,0 +1,36 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+/dist
+/build
+
+# Environment variables
+# .env
+# .env.local
+# .env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Optional: Uncomment if you're using TypeScript
+# *.tsbuildinfo
+
+# Optional: Uncomment if you're using Jest for testing
+# coverage/
