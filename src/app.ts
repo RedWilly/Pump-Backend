@@ -8,6 +8,7 @@ import tokenRoutes from './routes/tokenRoutes';
 import transactionRoutes from './routes/transactionRoutes';
 import liquidityRoutes from './routes/liquidityRoutes';
 import priceRoutes from './routes/priceRoutes'; 
+import net from 'net';
 
 const app = express();
 const server = http.createServer(app);
@@ -36,26 +37,44 @@ export function broadcastUpdate(type: string, data: any) {
   });
 }
 
-const PORT = process.env.PORT || 9006;
+const BASE_PORT = 9006;
+const MAX_PORT = 9106; // Try up to 100 ports
 
-function startServer(retries = 5) {
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    setupBlockchainListeners();
-  }).on('error', (e: NodeJS.ErrnoException) => {
-    if (e.code === 'EADDRINUSE') {
-      console.log(`Port ${PORT} is busy, retrying...`);
-      if (retries > 0) {
-        setTimeout(() => startServer(retries - 1), 10000);
-      } else {
-        console.error(`Could not start server after 5 attempts. Please check if port ${PORT} is available.`);
-        process.exit(1);
-      }
-    } else {
-      console.error('An unexpected error occurred:', e);
-      process.exit(1);
-    }
+function findAvailablePort(startPort: number, endPort: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    let port = startPort;
+    const tryPort = () => {
+      const server = net.createServer();
+      server.listen(port, () => {
+        server.once('close', () => {
+          resolve(port);
+        });
+        server.close();
+      });
+      server.on('error', () => {
+        if (port >= endPort) {
+          reject(new Error('No available ports'));
+        } else {
+          port++;
+          tryPort();
+        }
+      });
+    };
+    tryPort();
   });
+}
+
+async function startServer() {
+  try {
+    const port = await findAvailablePort(BASE_PORT, MAX_PORT);
+    server.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+      setupBlockchainListeners();
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 }
 
 startServer();
