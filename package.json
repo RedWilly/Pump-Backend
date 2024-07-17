@@ -6,7 +6,8 @@
   "scripts": {
     "start": "ts-node src/app.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "serve": "node dist/app.js"
   },
   "keywords": [],
   "author": "",
