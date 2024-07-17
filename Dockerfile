@@ -17,7 +17,7 @@ COPY . .
 EXPOSE 9007
 
 # Add a health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:9007 || exit 1
 
 # Command to run the application

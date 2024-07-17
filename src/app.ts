@@ -7,7 +7,7 @@ import { setupBlockchainListeners } from './blockchain/events';
 import tokenRoutes from './routes/tokenRoutes';
 import transactionRoutes from './routes/transactionRoutes';
 import liquidityRoutes from './routes/liquidityRoutes';
-import priceRoutes from './routes/priceRoutes'; 
+import priceRoutes from './routes/priceRoutes';
 
 const app = express();
 const server = http.createServer(app);
@@ -21,7 +21,7 @@ app.use(express.json());
 app.use('/api/tokens', tokenRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/liquidity', liquidityRoutes);
-app.use('/api/price', priceRoutes); 
+app.use('/api/price', priceRoutes);
 
 wss.on('connection', (ws) => {
   console.log('New WebSocket connection');
@@ -54,6 +54,7 @@ async function startServer() {
 
 startServer();
 
+// Health check endpoint
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
