@@ -10,11 +10,17 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+# If you're using TypeScript, you might need to install it globally
+RUN npm install -g typescript
+
 # Copy the rest of the application code
 COPY . .
 
+# If you have any build steps (e.g., for TypeScript), run them here
+RUN npm run build
+
 # Expose the port the app runs on
-EXPOSE 3000
+EXPOSE 9006
 
 # Command to run the application
 CMD ["npm", "start"]
