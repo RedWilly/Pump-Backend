@@ -87,3 +87,11 @@ process.on('SIGINT', async () => {
   await prisma.$disconnect();
   process.exit();
 });
+
+// Prevent multiple server starts
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  if (!serverStarted) {
+    process.exit(1);
+  }
+});
