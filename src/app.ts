@@ -40,6 +40,8 @@ export function broadcastUpdate(type: string, data: any) {
 const BASE_PORT = 9006;
 const MAX_PORT = 9106; // Try up to 100 ports
 
+let serverStarted = false; // Define serverStarted
+
 function findAvailablePort(startPort: number, endPort: number): Promise<number> {
   return new Promise((resolve, reject) => {
     let port = startPort;
@@ -70,6 +72,7 @@ async function startServer() {
     server.listen(port, () => {
       console.log(`Server running on port ${port}`);
       setupBlockchainListeners();
+      serverStarted = true; // Set serverStarted to true
     });
   } catch (error) {
     console.error('Failed to start server:', error);
