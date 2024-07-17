@@ -21,4 +21,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:$(cat /tmp/app_port) || exit 1
 
 # Command to run the application
-CMD npm start | tee /dev/stderr | sed -n 's/.*Server running on port \([0-9]*\).*/\1/p' > /tmp/app_port && tail -f /dev/null
+CMD bash -c 'npm start | tee /dev/stderr | sed -n "s/.*Server running on port \([0-9]*\).*/\1/p" > /tmp/app_port && tail -f /dev/null'
