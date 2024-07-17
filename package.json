@@ -4,10 +4,7 @@
   "description": "This README provides an overview of the Bonding Curve Token Platform backend, including setup instructions, architecture overview, and API documentation.",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/app.ts",
-    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "build": "tsc",
-    "serve": "node dist/app.js"
+    "start": "ts-node src/app.ts"
   },
   "keywords": [],
   "author": "",
