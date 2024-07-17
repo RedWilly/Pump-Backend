@@ -1,5 +1,5 @@
 # Use an official Node runtime as the base image
-FROM node:18
+FROM node:14
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Expose the port the app runs on
-EXPOSE 3005
+EXPOSE 3000
 
 # Command to run the application
 CMD ["npm", "start"]
