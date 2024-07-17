@@ -67,12 +67,16 @@ function findAvailablePort(startPort: number, endPort: number): Promise<number> 
 }
 
 async function startServer() {
+  if (serverStarted) {
+    return;
+  }
+  serverStarted = true;
+
   try {
     const port = await findAvailablePort(BASE_PORT, MAX_PORT);
     server.listen(port, () => {
       console.log(`Server running on port ${port}`);
       setupBlockchainListeners();
-      serverStarted = true; // Set serverStarted to true
     });
   } catch (error) {
     console.error('Failed to start server:', error);
