@@ -1,3 +1,5 @@
+//npx ts-node scripts/refetch.ts
+
 import { createPublicClient, http, parseAbi } from 'viem';
 import { shibarium } from 'viem/chains';
 import { PrismaClient } from '@prisma/client';
@@ -19,7 +21,7 @@ const client = createPublicClient({
 });
 
 async function refetchEvents() {
-  const buyBlock = 5639220;
+  const buyBlock = 5811355;
   const sellBlock = 5639268;
 
   console.log('Refetching TokensBought event...');
@@ -51,10 +53,16 @@ async function refetchEvents() {
   console.log('Finished processing events.');
 }
 
+function calculateTokenPrice(ethAmount: bigint, tokenAmount: bigint): string {
+  const price = Number(ethAmount) / Number(tokenAmount);
+  return (price * 1e18).toFixed(0);
+}
+
 async function handleTokensBought(log: any) {
-  const { token: tokenAddress, buyer, ethAmount, tokenAmount, tokenPrice } = log.args;
+  const { token: tokenAddress, buyer, ethAmount, tokenAmount } = log.args;
   const token = await getTokenByAddress(tokenAddress);
   if (token) {
+    const tokenPrice = calculateTokenPrice(ethAmount, tokenAmount);
     const transaction = await createTransaction({
       tokenId: token.id,
       type: 'buy',
@@ -72,9 +80,10 @@ async function handleTokensBought(log: any) {
 }
 
 async function handleTokensSold(log: any) {
-  const { token: tokenAddress, seller, tokenAmount, ethAmount, tokenPrice } = log.args;
+  const { token: tokenAddress, seller, tokenAmount, ethAmount } = log.args;
   const token = await getTokenByAddress(tokenAddress);
   if (token) {
+    const tokenPrice = calculateTokenPrice(ethAmount, tokenAmount);
     const transaction = await createTransaction({
       tokenId: token.id,
       type: 'sell',
