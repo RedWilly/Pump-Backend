@@ -1,4 +1,6 @@
-# Bonding Curve Token Platform Backend
+# JUST MIGRATED TO DRIZZLE - WILL UPDATE THE DOCS/README LATER - BUSY
+
+## Bonding Curve Token Platform Backend - 
 
 This README provides an overview of the Bonding Curve Token Platform backend, including setup instructions, architecture overview, and API documentation.
 
