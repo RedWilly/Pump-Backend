@@ -1,6 +1,6 @@
 import { createPublicClient, http } from 'viem';
 import { shibarium } from 'viem/chains';
-import { prisma, broadcastUpdate } from '../app';
+import { broadcastUpdate } from '../app';
 import { createToken, getTokenByAddress, updateToken } from '../services/tokenService';
 import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
