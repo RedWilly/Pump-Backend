@@ -3,9 +3,11 @@
 import { db } from '../config/database';
 import { transactions, tokens } from '../config/schema';
 import { eq, desc, or, sql, and } from 'drizzle-orm';
+import logger from '../utils/logger';
 
 export async function createTransaction(data: {
   tokenId: string;
+  chain: string;
   type: string;
   senderAddress: string;
   recipientAddress: string;
@@ -20,23 +22,31 @@ export async function createTransaction(data: {
     tokenAmount: data.tokenAmount.toString(),
     tokenPrice: data.tokenPrice.toString()
   }).returning();
+
+  logger.info(`Transaction recorded: ${newTransaction.id} (${data.type}) for token ${data.tokenId} on chain ${data.chain}`);
   return newTransaction;
 }
 
-export async function getTransactionsByTokenId(tokenId: string, page: number = 1, pageSize: number = 20) {
+export async function getTransactionsByTokenId(chain: string, tokenId: string, page: number = 1, pageSize: number = 20) {
   const offset = (page - 1) * pageSize;
 
   const [transactionsResult, countResult] = await Promise.all([
     db.select()
       .from(transactions)
-      .where(eq(transactions.tokenId, tokenId))
+      .where(and(
+        eq(transactions.chain, chain),
+        eq(transactions.tokenId, tokenId)
+      ))
       .orderBy(desc(transactions.timestamp))
       .limit(pageSize)
       .offset(offset),
 
     db.select({ count: sql<number>`count(*)` })
       .from(transactions)
-      .where(eq(transactions.tokenId, tokenId))
+      .where(and(
+        eq(transactions.chain, chain),
+        eq(transactions.tokenId, tokenId)
+      ))
   ]);
 
   const totalCount = countResult[0].count;
@@ -49,7 +59,7 @@ export async function getTransactionsByTokenId(tokenId: string, page: number = 1
   };
 }
 
-export async function getRecentTransactions(page: number = 1, pageSize: number = 20) {
+export async function getRecentTransactions(chain: string, page: number = 1, pageSize: number = 20) {
   const offset = (page - 1) * pageSize;
 
   const [transactionsResult, countResult] = await Promise.all([
@@ -70,12 +80,18 @@ export async function getRecentTransactions(page: number = 1, pageSize: number =
       }
     })
       .from(transactions)
-      .leftJoin(tokens, eq(tokens.id, transactions.tokenId))
+      .leftJoin(tokens, and(
+        eq(tokens.id, transactions.tokenId),
+        eq(tokens.chain, transactions.chain)
+      ))
+      .where(eq(transactions.chain, chain))
       .orderBy(desc(transactions.timestamp))
       .limit(pageSize)
       .offset(offset),
 
-    db.select({ count: sql<number>`count(*)` }).from(transactions)
+    db.select({ count: sql<number>`count(*)` })
+      .from(transactions)
+      .where(eq(transactions.chain, chain))
   ]);
 
   const totalCount = countResult[0].count;
@@ -88,15 +104,18 @@ export async function getRecentTransactions(page: number = 1, pageSize: number =
   };
 }
 
-export async function getTransactionsByAddress(address: string, page: number = 1, pageSize: number = 20) {
+export async function getTransactionsByAddress(chain: string, address: string, page: number = 1, pageSize: number = 20) {
   const offset = (page - 1) * pageSize;
 
   const [transactionsResult, countResult] = await Promise.all([
     db.select()
       .from(transactions)
-      .where(or(
-        eq(transactions.senderAddress, address),
-        eq(transactions.recipientAddress, address)
+      .where(and(
+        eq(transactions.chain, chain),
+        or(
+          eq(transactions.senderAddress, address),
+          eq(transactions.recipientAddress, address)
+        )
       ))
       .orderBy(desc(transactions.timestamp))
       .limit(pageSize)
@@ -104,9 +123,12 @@ export async function getTransactionsByAddress(address: string, page: number = 1
 
     db.select({ count: sql<number>`count(*)` })
       .from(transactions)
-      .where(or(
-        eq(transactions.senderAddress, address),
-        eq(transactions.recipientAddress, address)
+      .where(and(
+        eq(transactions.chain, chain),
+        or(
+          eq(transactions.senderAddress, address),
+          eq(transactions.recipientAddress, address)
+        )
       ))
   ]);
 
@@ -120,15 +142,18 @@ export async function getTransactionsByAddress(address: string, page: number = 1
   };
 }
 
-export async function getTransactionByTxHash(txHash: string) {
+export async function getTransactionByTxHash(chain: string, txHash: string) {
   const [transaction] = await db.select()
     .from(transactions)
-    .where(eq(transactions.txHash, txHash))
+    .where(and(
+      eq(transactions.chain, chain),
+      eq(transactions.txHash, txHash)
+    ))
     .limit(1);
   return transaction || null;
 }
 
-export async function getTransactionVolume(tokenId: string, timeframe: 'day' | 'week' | 'month') {
+export async function getTransactionVolume(chain: string, tokenId: string, timeframe: 'day' | 'week' | 'month') {
   let timeCondition;
   const now = new Date();
 
@@ -149,6 +174,7 @@ export async function getTransactionVolume(tokenId: string, timeframe: 'day' | '
   })
     .from(transactions)
     .where(and(
+      eq(transactions.chain, chain),
       eq(transactions.tokenId, tokenId),
       timeCondition
     ));
@@ -156,7 +182,7 @@ export async function getTransactionVolume(tokenId: string, timeframe: 'day' | '
   return result.volume || '0';
 }
 
-export async function getTransactionCount(tokenId: string, timeframe: 'day' | 'week' | 'month') {
+export async function getTransactionCount(chain: string, tokenId: string, timeframe: 'day' | 'week' | 'month') {
   let timeCondition;
   const now = new Date();
 
@@ -177,9 +203,39 @@ export async function getTransactionCount(tokenId: string, timeframe: 'day' | 'w
   })
     .from(transactions)
     .where(and(
+      eq(transactions.chain, chain),
       eq(transactions.tokenId, tokenId),
       timeCondition
     ));
 
   return result.count || 0;
+}
+
+export async function getLatestTokenPrice(chain: string, tokenId: string) {
+  const [latestTransaction] = await db.select({
+    tokenPrice: transactions.tokenPrice
+  })
+    .from(transactions)
+    .where(and(
+      eq(transactions.chain, chain),
+      eq(transactions.tokenId, tokenId)
+    ))
+    .orderBy(desc(transactions.timestamp))
+    .limit(1);
+
+  return latestTransaction ? latestTransaction.tokenPrice : null;
+}
+
+export async function getTokenPriceHistory(chain: string, tokenId: string, limit: number = 100) {
+  return db.select({
+    tokenPrice: transactions.tokenPrice,
+    timestamp: transactions.timestamp
+  })
+    .from(transactions)
+    .where(and(
+      eq(transactions.chain, chain),
+      eq(transactions.tokenId, tokenId)
+    ))
+    .orderBy(desc(transactions.timestamp))
+    .limit(limit);
 }

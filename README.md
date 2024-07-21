@@ -1,102 +1,111 @@
-# JUST MIGRATED TO DRIZZLE - WILL UPDATE THE DOCS/README LATER - BUSY
+# Multi-Chain PUMP API
 
-## Bonding Curve Token Platform Backend - 
+## Overview
 
-This README provides an overview of the Bonding Curve Token Platform backend, including setup instructions, architecture overview, and API documentation.
+It provides comprehensive data access and real-time updates for tokens, transactions, liquidity events, and pricing information.
 
-## How to Run
+## Features
 
-1. Install dependencies:
+- Support for multiple blockchain networks
+- RESTful API endpoints for token, transaction, and liquidity data
+- Real-time updates via WebSocket connections
+- Price data retrieval for supported chains
+- Pagination support for large data sets
+- Detailed error handling and rate limiting
+
+## Technologies Used
+
+- Node.js
+- TypeScript
+- Express.js
+- WebSocket (ws)
+- PostgreSQL
+- Drizzle ORM
+- prisma (removed = slow)
+
+## Prerequisites
+
+Before you begin, ensure you have met the following requirements:
+
+- Node.js (v14 or later)
+- npm (v6 or later)
+- PostgreSQL (v12 or later)
+
+## Installation
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/RedWilly/Pump-Backend.git
+
+   git checkout multi
+   ```
+
+2. Navigate to the project directory:
+   ```
+   cd Pump-Backend
+   ```
+
+3. Install the dependencies:
    ```
    npm install
    ```
 
-2. Set up your environment variables:
-   Create a `.env` file in the root directory and add your database URL:
+4. Create a `.env` file in the root directory and add the following environment variables:
    ```
-   DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
+   DATABASE_URL=postgresql://username:password@localhost:5432/your_database_name
+   PORT=9007
    ```
+   Replace the `DATABASE_URL` with your actual PostgreSQL connection string.
 
-3. Generate Prisma client:
-   ```
-   npx prisma generate
-   ```
+## Database Setup
 
-4. Run database migrations:
-   ```
-   npx prisma migrate dev
-   ```
+1. Create a new PostgreSQL database for the project.
 
-5. Start the server:
+2. Run the database migrations:
    ```
-   npm start
+   npm run generate
+   npm run migrate
    ```
 
-## Architecture Overview
+## Usage
 
-This backend is built using Node.js with Express.js as the web framework. It uses Prisma as an ORM to interact with a PostgreSQL database. The application listens to blockchain events using Viem and updates the database accordingly.
+To start the server in development mode:
 
-Key components:
+```
+npm start
+```
 
-- **Express.js Server**: Handles HTTP requests and WebSocket connections.
-- **Prisma ORM**: Manages database operations and schema.
-- **Viem**: Interacts with the blockchain to listen for events.
-- **WebSocket**: Provides real-time updates to connected clients.
+The server will start on the port specified in your `.env` file (default is 9007).
 
-## Database Schema
+## API Documentation
 
-The database consists of three main models:
-
-1. **Token**: Represents a bonding curve token.
-2. **Transaction**: Represents buy/sell transactions for tokens.
-3. **LiquidityEvent**: Represents liquidity addition events for tokens.
-
-## API Endpoints
-
-### Tokens
-
-- `GET /api/tokens`: Get all tokens
-- `GET /api/tokens/:id`: Get a specific token by ID
-- `GET /api/tokens/address/:address`: Get a token by its blockchain address
-
-### Transactions
-
-- `GET /api/transactions/token/:tokenId`: Get all transactions for a specific token
-
-### Liquidity Events
-
-- `GET /api/liquidity/token/:tokenId`: Get all liquidity events for a specific token
+For detailed API documentation, including all available endpoints and their usage, please refer to the [API Documentation](./API_DOCS.md).
 
 ## WebSocket
 
-The server uses WebSocket to broadcast real-time updates to connected clients. Clients can connect to the WebSocket server to receive updates about new tokens, transactions, and liquidity events.
+The API provides real-time updates through WebSocket connections. Connect to the WebSocket server at:
 
-WebSocket events:
+```
+wss://localhost:9007
+```
 
-- `tokenCreated`: Broadcasted when a new token is created
-- `tokensBought`: Broadcasted when tokens are bought
-- `tokensSold`: Broadcasted when tokens are sold
-- `liquidityAdded`: Broadcasted when liquidity is added to a token
+For more details on WebSocket events and message formats, see the [API Documentation](./API_DOCUMENTATION.md#websocket). websocket is not fully implemented yet but show it does work so :)
 
-## Blockchain Event Listeners
+## Scripts
 
-The application sets up listeners for the following blockchain events:
+- `npm run generate`: Generate Drizzle ORM schema
+- `npm run migrate`: Run database migrations
+- `npm start`: Start the server
 
-- `TokenCreated`: Triggered when a new token is created
-- `TokensBought`: Triggered when tokens are bought
-- `TokensSold`: Triggered when tokens are sold
-- `LiquidityAdded`: Triggered when liquidity is added to a token
 
-These events are processed and the corresponding database operations are performed to keep the backend data in sync with the blockchain state.
+## Contributing
 
-## Error Handling
+Contributions to the Multi-Chain PUMP API(PUMP-BACKEND) are welcome. Please feel free to submit a Pull Request.
 
-The application includes basic error handling for API endpoints. More comprehensive error handling and logging can be implemented as needed.
+## License
 
-## Future Improvements
+[MIT License](LICENSE)
 
-- Implement authentication and authorization
-- Add more comprehensive error handling and logging
-- Implement rate limiting for API endpoints
-- Add unit and integration tests
-- Consider implementing caching for frequently accessed data
+## Contact
+
+If you have any questions or feedback, please open an issue.

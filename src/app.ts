@@ -7,7 +7,10 @@ import tokenRoutes from './routes/tokenRoutes';
 import transactionRoutes from './routes/transactionRoutes';
 import liquidityRoutes from './routes/liquidityRoutes';
 import priceRoutes from './routes/priceRoutes';
-import { db, pool } from '../src/config/database';
+import { db, pool, testDatabaseConnection } from '../src/config/database';
+import { initializeAllChains } from '../src/blockchain/chainConfig';
+
+import logger from './utils/logger';
 
 const app = express();
 const server = http.createServer(app);
@@ -40,17 +43,27 @@ let serverStarted = false;
 
 async function startServer() {
   if (serverStarted) {
+    logger.warn('Server start attempted when already running');
     return;
   }
-  serverStarted = true;
 
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    setupBlockchainListeners();
-  });
+  try {
+    await testDatabaseConnection();
+    await initializeAllChains();
+    logger.info('All chains initialized in the database');
+
+    await setupBlockchainListeners();
+    logger.info('Blockchain listeners set up for all supported chains');
+
+    server.listen(PORT, () => {
+      serverStarted = true;
+      logger.info(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
 }
-
-startServer();
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -58,18 +71,13 @@ app.get('/', (req, res) => {
 });
 
 process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
+  logger.info('Shutting down gracefully...');
   await pool.end();
-  console.log('Database connection closed.');
+  logger.info('Database connection closed.');
   process.exit();
 });
 
-// Prevent multiple server starts
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  if (!serverStarted) {
-    process.exit(1);
-  }
-});
+// Start the server
+startServer();
 
 export { app, server };
