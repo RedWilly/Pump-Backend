@@ -1,5 +1,6 @@
+//chainConfig.ts
 import { Chain } from 'viem'
-import { shibarium, base, arbitrum, optimism, avalanche } from 'viem/chains'
+import { shibarium, sepolia, baseSepolia, optimism, avalanche } from 'viem/chains'
 import { db } from '../config/database'
 import { chains } from '../config/schema'
 import { eq } from 'drizzle-orm'
@@ -11,18 +12,18 @@ export interface ChainConfig extends Chain {
 }
 
 export const supportedChains: Record<string, ChainConfig> = {
-  shibarium: {
-    ...shibarium,
-    contractAddress: '0x6Cb47Ef9b8482c3303C25F1164DCE03d2d2bd9A1',
+  // shibarium: {
+  //   ...shibarium,
+  //   contractAddress: '0x6Cb47Ef9b8482c3303C25F1164DCE03d2d2bd9A1',
+  // },
+  sepolia: {
+    ...sepolia,
+    contractAddress: '0x4D57D3F66002Bb11096064310740b3544a2c31e6',
   },
-//   base: {
-//     ...base,
-//     contractAddress: '0x...',  // Add the contract address for Base
-//   },
-//   arbitrum: {
-//     ...arbitrum,
-//     contractAddress: '0x...',  // Add the contract address for Arbitrum
-//   },
+  baseSepolia: {
+    ...baseSepolia,
+    contractAddress: '0x4D57D3F66002Bb11096064310740b3544a2c31e6',
+  },
 //   optimism: {
 //     ...optimism,
 //     contractAddress: '0x...',  // Add the contract address for Optimism

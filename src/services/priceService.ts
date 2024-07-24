@@ -38,6 +38,8 @@ interface ChainTokenMap {
 const chainToTokenMap: ChainTokenMap = {
   shibarium: 'bone_usdt',
   avalanche: 'avax_usdt',
+  sepolia: 'eth_usdt',
+  baseSepolia: 'eth_usdt'
 };
 
 interface PriceCache {

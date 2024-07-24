@@ -9,6 +9,7 @@ const logger = winston.createLogger({
   defaultMeta: { service: 'multi-chain-service' },
   transports: [
     new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'warn.log', level: 'warn' }), // New transport for warnings
     new winston.transports.File({ filename: 'combined.log' }),
   ],
 });
