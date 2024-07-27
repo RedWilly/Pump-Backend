@@ -8,6 +8,7 @@ import tokenRoutes from './routes/tokenRoutes';
 import transactionRoutes from './routes/transactionRoutes';
 import liquidityRoutes from './routes/liquidityRoutes';
 import priceRoutes from './routes/priceRoutes';
+import { fileQueue } from './blockchain/fileQueue';
 
 const app = express();
 const server = http.createServer(app);
@@ -53,6 +54,39 @@ async function startServer() {
 }
 
 startServer();
+
+// routes for queues
+app.get('/dlq', async (req, res) => {
+  const dlqItems = await fileQueue.listDeadLetterQueue();
+  res.json(dlqItems);
+});
+
+app.post('/dlq/:id/reprocess', async (req, res) => {
+  const success = await fileQueue.reprocessDeadLetterQueueItem(req.params.id);
+  res.json({ success });
+});
+
+app.delete('/dlq/:id', async (req, res) => {
+  const success = await fileQueue.deleteDeadLetterQueueItem(req.params.id);
+  res.json({ success });
+});
+
+app.get('/queue-stats', async (req, res) => {
+  try {
+    const stats = await fileQueue.getQueueStats();
+    res.json({
+      success: true,
+      stats: {
+        mainQueue: stats.main,
+        errorQueue: stats.error,
+        deadLetterQueue: stats.dlq
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching queue stats:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch queue statistics' });
+  }
+});
 
 // Health check endpoint
 app.get('/', (req, res) => {

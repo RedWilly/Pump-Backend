@@ -1,73 +1,115 @@
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, Address, ContractFunctionExecutionError } from 'viem';
 import { shibarium } from 'viem/chains';
 import { prisma, broadcastUpdate } from '../app';
 import { createToken, getTokenByAddress, updateToken } from '../services/tokenService';
 import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
 import { ABI, TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT } from './abi';
+import { FileQueue } from './fileQueue';
 
-const CONTRACT_ADDRESS = '0x6Cb47Ef9b8482c3303C25F1164DCE03d2d2bd9A1'; // Replace with your contract address
+const CONTRACT_ADDRESS = '0x6Cb47Ef9b8482c3303C25F1164DCE03d2d2bd9A1';
+
+const fileQueue = new FileQueue();
 
 export async function setupBlockchainListeners() {
-    const client = createPublicClient({
-      chain: shibarium,
-      transport: http()
-    });
-  
-    client.watchContractEvent({
-      address: CONTRACT_ADDRESS,
-      abi: ABI,
-      eventName: TOKEN_CREATED_EVENT,
-      onLogs: handleTokenCreated
-    });
-  
-    client.watchContractEvent({
-      address: CONTRACT_ADDRESS,
-      abi: ABI,
-      eventName: TOKENS_BOUGHT_EVENT,
-      onLogs: handleTokensBought
-    });
-  
-    client.watchContractEvent({
-      address: CONTRACT_ADDRESS,
-      abi: ABI,
-      eventName: TOKENS_SOLD_EVENT,
-      onLogs: handleTokensSold
-    });
-  
-    client.watchContractEvent({
-      address: CONTRACT_ADDRESS,
-      abi: ABI,
-      eventName: LIQUIDITY_ADDED_EVENT,
-      onLogs: handleLiquidityAdded
-    });
+  const client = createPublicClient({
+    chain: shibarium,
+    transport: http()
+  });
+
+  client.watchContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: ABI,
+    eventName: TOKEN_CREATED_EVENT,
+    onLogs: (logs) => handleEvents(TOKEN_CREATED_EVENT, logs)
+  });
+
+  client.watchContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: ABI,
+    eventName: TOKENS_BOUGHT_EVENT,
+    onLogs: (logs) => handleEvents(TOKENS_BOUGHT_EVENT, logs)
+  });
+
+  client.watchContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: ABI,
+    eventName: TOKENS_SOLD_EVENT,
+    onLogs: (logs) => handleEvents(TOKENS_SOLD_EVENT, logs)
+  });
+
+  client.watchContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: ABI,
+    eventName: LIQUIDITY_ADDED_EVENT,
+    onLogs: (logs) => handleEvents(LIQUIDITY_ADDED_EVENT, logs)
+  });
+
+  // Start processing the queue
+  setInterval(() => fileQueue.processQueue(processEvent), 1000);
 }
 
-function calculateTokenPrice(ethAmount: bigint, tokenAmount: bigint): string {
-  const price = Number(ethAmount) / Number(tokenAmount);
-  return (price * 1e18).toFixed(0);
-}
-
-async function handleTokenCreated(logs: any) {
+async function handleEvents(eventType: string, logs: any) {
   for (const log of logs) {
-    const { tokenAddress, creator, name, symbol } = log.args;
+    await fileQueue.enqueue(eventType, { ...log.args, blockNumber: log.blockNumber, transactionHash: log.transactionHash });
+  }
+}
+
+async function processEvent(type: string, data: any): Promise<void> {
+  switch (type) {
+    case TOKEN_CREATED_EVENT:
+      await handleTokenCreated(data);
+      break;
+    case TOKENS_BOUGHT_EVENT:
+      await handleTokensBought(data);
+      break;
+    case TOKENS_SOLD_EVENT:
+      await handleTokensSold(data);
+      break;
+    case LIQUIDITY_ADDED_EVENT:
+      await handleLiquidityAdded(data);
+      break;
+  }
+}
+
+async function handleTokenCreated(data: any) {
+  const { tokenAddress, creator, name, symbol } = data;
+  try {
     const token = await createToken({
       address: tokenAddress,
       creatorAddress: creator,
       name,
       symbol
-      // logo and description are omitted and will default to empty strings
     });
-    broadcastUpdate('tokenCreated', token);
+
+    // Prepare broadcast data
+    const broadcastData = {
+      id: token.id,
+      type: 'creation',
+      creatorAddress: creator,
+      tokenAddress: tokenAddress,
+      name: token.name,
+      symbol: token.symbol,
+      logo: token.logo || '', //logo might be empty since it will need to be updated first/call first
+    };
+
+    // Delay the broadcast by 5 seconds
+    setTimeout(() => {
+      broadcastUpdate('tokenCreated', broadcastData);
+    }, 5000);
+
+    console.log(`Token created and saved to DB: ${token.name}. Broadcast scheduled in 5 seconds.`);
+  } catch (error) {
+    console.error('Error handling token creation:', error);
   }
 }
 
-async function handleTokensBought(logs: any) {
-  for (const log of logs) {
-    const { token: tokenAddress, buyer, ethAmount, tokenAmount } = log.args;
+async function handleTokensBought(data: any) {
+  const { token: tokenAddress, buyer, ethAmount, tokenAmount, blockNumber, transactionHash } = data;
+  try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
-      const tokenPrice = calculateTokenPrice(ethAmount, tokenAmount);
+      const tokenPrice = await calculateTokenPrice(tokenAddress, BigInt(blockNumber));
       const transaction = await createTransaction({
         tokenId: token.id,
         type: 'buy',
@@ -76,19 +118,30 @@ async function handleTokensBought(logs: any) {
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
         tokenPrice: tokenPrice.toString(),
-        txHash: log.transactionHash
+        txHash: transactionHash
       });
-      broadcastUpdate('tokensBought', transaction);
+
+      // Flattened broadcast data
+      const broadcastData = {
+        ...transaction,
+        name: token.name,
+        symbol: token.symbol,
+        logo: token.logo
+      };
+      
+      broadcastUpdate('tokensBought', broadcastData);
     }
+  } catch (error) {
+    console.error('Error handling tokens bought:', error);
   }
 }
 
-async function handleTokensSold(logs: any) {
-  for (const log of logs) {
-    const { token: tokenAddress, seller, tokenAmount, ethAmount } = log.args;
+async function handleTokensSold(data: any) {
+  const { token: tokenAddress, seller, tokenAmount, ethAmount, blockNumber, transactionHash } = data;
+  try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
-      const tokenPrice = calculateTokenPrice(ethAmount, tokenAmount);
+      const tokenPrice = await calculateTokenPrice(tokenAddress, BigInt(blockNumber));
       const transaction = await createTransaction({
         tokenId: token.id,
         type: 'sell',
@@ -96,26 +149,66 @@ async function handleTokensSold(logs: any) {
         recipientAddress: tokenAddress,
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
-        tokenPrice: tokenPrice.toString(), 
-        txHash: log.transactionHash
+        tokenPrice: tokenPrice.toString(),
+        txHash: transactionHash
       });
-      broadcastUpdate('tokensSold', transaction);
+
+      // Flattened broadcast data
+      const broadcastData = {
+        ...transaction,
+        name: token.name,
+        symbol: token.symbol,
+        logo: token.logo
+      };
+      
+      broadcastUpdate('tokensSold', broadcastData);
     }
+  } catch (error) {
+    console.error('Error handling tokens sold:', error);
   }
 }
 
-async function handleLiquidityAdded(logs: any) {
-  for (const log of logs) {
-    const { token: tokenAddress, ethAmount, tokenAmount } = log.args;
+async function handleLiquidityAdded(data: any) {
+  const { token: tokenAddress, ethAmount, tokenAmount, transactionHash } = data;
+  try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
       const liquidityEvent = await createLiquidityEvent({
         tokenId: token.id,
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
-        txHash: log.transactionHash
+        txHash: transactionHash
       });
       broadcastUpdate('liquidityAdded', liquidityEvent);
+    }
+  } catch (error) {
+    console.error('Error handling liquidity added:', error);
+  }
+}
+
+async function calculateTokenPrice(tokenAddress: Address, blockNumber: bigint): Promise<string> {
+  const client = createPublicClient({
+    chain: shibarium,
+    transport: http()
+  });
+
+  try {
+    const price = await client.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: ABI,
+      functionName: 'getCurrentTokenPrice',
+      args: [tokenAddress],
+      blockNumber: blockNumber
+    });
+
+    return price.toString();
+  } catch (error) {
+    if (error instanceof ContractFunctionExecutionError) {
+      console.warn('Contract call reverted, setting price to 0:', error.message);
+      return '0';
+    } else {
+      console.error('Error fetching token price:', error);
+      throw new Error('Failed to fetch token price');
     }
   }
 }

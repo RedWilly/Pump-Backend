@@ -41,6 +41,7 @@ model Token {
   @@index([address])
   @@index([address, createdAt])
   @@index([createdAt])
+  @@index([name, symbol])
 }
 
 model Transaction {

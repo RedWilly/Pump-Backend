@@ -308,3 +308,57 @@ export async function getAllTokenAddresses() {
     }
   });
 }
+
+
+//search token
+export async function searchTokens(query: string, page: number = 1, pageSize: number = 20) {
+  const skip = (page - 1) * pageSize;
+
+  const [tokens, totalCount] = await Promise.all([
+    prisma.token.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { symbol: { contains: query, mode: 'insensitive' } },
+          { address: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        address: true,
+        name: true,
+        symbol: true,
+        logo: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            liquidityEvents: true,
+          },
+        },
+      },
+      skip,
+      take: pageSize,
+    }),
+    prisma.token.count({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { symbol: { contains: query, mode: 'insensitive' } },
+          { address: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+    }),
+  ]);
+
+  return {
+    tokens,
+    totalCount,
+    currentPage: page,
+    totalPages: Math.ceil(totalCount / pageSize),
+  };
+}

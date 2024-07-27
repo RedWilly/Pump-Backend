@@ -3,6 +3,8 @@ import * as tokenController from '../controllers/tokenController';
 
 const router = express.Router();
 
+router.get('/search', tokenController.searchTokens);
+
 router.get('/addresses', tokenController.getAllTokenAddresses);
 router.patch('/update/:address', tokenController.updateTokenInfo);
 router.get('/address/:address/historical-prices', tokenController.getTokenHistoricalPrices);

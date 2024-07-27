@@ -148,3 +148,21 @@ export async function getAllTokenAddresses(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to fetch token addresses and symbols' });
   }
 }
+
+export async function searchTokens(req: Request, res: Response) {
+  try {
+    const query = req.query.q as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const result = await tokenService.searchTokens(query, page, pageSize);
+    res.json(result);
+  } catch (error) {
+    console.error('Error searching tokens:', error);
+    res.status(500).json({ error: 'Failed to search tokens' });
+  }
+}
