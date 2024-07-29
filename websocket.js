@@ -19,16 +19,48 @@ function generateRandomTxHash() {
   return '0x' + crypto.randomBytes(32).toString('hex');
 }
 
+function generateRandomColor() {
+  return Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+}
+
+function generateRandomName() {
+  const adjectives = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Crypto', 'Moon', 'Rocket', 'Diamond', 'Golden'];
+  const nouns = ['Coin', 'Token', 'Cash', 'Money', 'Gem', 'Star', 'Planet', 'Dog', 'Cat', 'Rabbit'];
+  return adjectives[Math.floor(Math.random() * adjectives.length)] + 
+         nouns[Math.floor(Math.random() * nouns.length)];
+}
+
+function generateRandomSymbol(name) {
+  const length = Math.floor(Math.random() * 3) + 2; // 2 to 4 characters
+  let symbol = '';
+  const words = name.split(/(?=[A-Z])/);
+  for (let i = 0; i < length; i++) {
+    if (i < words.length) {
+      symbol += words[i][0].toUpperCase();
+    } else {
+      symbol += String.fromCharCode(65 + Math.floor(Math.random() * 26)); // Random uppercase letter
+    }
+  }
+  return symbol;
+}
+
 function generateRandomToken() {
-  const names = ['RedWilly', 'BlueBerry', 'GreenApple', 'YellowBanana', 'PurpleGrape', 'BIGMAN'];
-  const symbols = ['RW', 'BB', 'GA', 'YB', 'PG', 'POL', 'YOLO', 'BG', 'BJ'];
-  const colors = ['FF0000', '0000FF', '00FF00', 'FFFF00', '800080', '984230', '1f6d0c' ];
-  const index = Math.floor(Math.random() * names.length);
+  const name = generateRandomName();
+  const symbol = generateRandomSymbol(name);
+  const color = generateRandomColor();
   return {
-    name: names[index],
-    symbol: symbols[index],
-    logo: `https://placehold.co/200x200/${colors[index]}/FFFFFF.png?text=${symbols[index]}`
+    name: name,
+    symbol: symbol,
+    logo: `https://placehold.co/200x200/${color}/FFFFFF.png?text=${symbol}`
   };
+}
+
+function generateRandomAmount() {
+  return BigInt(Math.floor(Math.random() * 1e24)).toString(); // Up to 1 million tokens/ETH (with 18 decimals)
+}
+
+function generateRandomPrice() {
+  return BigInt(Math.floor(Math.random() * 1e18)).toString(); // Up to 1 ETH per token
 }
 
 function generateRandomEvent() {
@@ -56,9 +88,9 @@ function generateRandomEvent() {
         data: {
           ...baseEvent,
           type: eventType === 'tokensSold' ? 'sell' : 'buy',
-          ethAmount: (Math.random() * 10000000000000000000),
-          tokenAmount: (Math.random() * 100000000000000000000),
-          tokenPrice: (Math.random() * 200010010000000000)
+          ethAmount: generateRandomAmount(),
+          tokenAmount: generateRandomAmount(),
+          tokenPrice: generateRandomPrice()
         }
       };
     case 'tokenCreated':
@@ -81,7 +113,7 @@ wss.on('connection', (ws) => {
 
   const interval = setInterval(() => {
     const event = generateRandomEvent();
-    console.log(event)
+    console.log(event);
     ws.send(JSON.stringify(event));
     console.log('Sent event:', event.type);
   }, 10000);
