@@ -9,7 +9,7 @@ const ABI = parseAbi([
   'event TokenCreated(address indexed tokenAddress, address indexed creator, string name, string symbol, string logo, string description)'
 ]);
 
-const CONTRACT_ADDRESS = '0x6Cb47Ef9b8482c3303C25F1164DCE03d2d2bd9A1';
+const CONTRACT_ADDRESS = '0x97b962Ab399beBF439a4a303d9754e79d6925EDa';
 
 const client = createPublicClient({
   chain: shibarium,

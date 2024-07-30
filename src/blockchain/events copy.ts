@@ -6,7 +6,7 @@ import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
 import { ABI, TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT } from './abi';
 
-const CONTRACT_ADDRESS = '0x6Cb47Ef9b8482c3303C25F1164DCE03d2d2bd9A1'; // Replace with your contract address
+const CONTRACT_ADDRESS = '0x97b962Ab399beBF439a4a303d9754e79d6925EDa'; // Replace with your contract address
 
 export async function setupBlockchainListeners() {
     const client = createPublicClient({

@@ -13,7 +13,7 @@ const ABI = parseAbi([
   'event TokensSold(address indexed token, address indexed seller, uint256 tokenAmount, uint256 ethAmount)'
 ]);
 
-const CONTRACT_ADDRESS = '0x6Cb47Ef9b8482c3303C25F1164DCE03d2d2bd9A1';
+const CONTRACT_ADDRESS = '0x97b962Ab399beBF439a4a303d9754e79d6925EDa';
 
 const client = createPublicClient({
   chain: shibarium,
