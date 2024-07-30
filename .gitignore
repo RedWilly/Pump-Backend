@@ -11,6 +11,7 @@ yarn-error.log
 .env
 # .env.local
 # .env.*.local
+run.js
 
 # IDE and editor files
 .vscode/
