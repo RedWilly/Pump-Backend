@@ -6,6 +6,7 @@ import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
 import { ABI, TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT } from './abi';
 import { FileQueue } from './fileQueue';
+import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNotification } from '../telegramBot';
 
 const CONTRACT_ADDRESS = '0x97b962Ab399beBF439a4a303d9754e79d6925EDa';
 
@@ -93,10 +94,23 @@ async function handleTokenCreated(data: any) {
       logo: token.logo || '', //logo might be empty since it will need to be updated first/call first
     };
 
-    // Delay the broadcast by 5 seconds
-    setTimeout(() => {
-      broadcastUpdate('tokenCreated', broadcastData);
-    }, 5000);
+    // // Delay the broadcast by 5 seconds
+    // setTimeout(() => {
+    //   broadcastUpdate('tokenCreated', broadcastData);
+    // }, 5000);
+    broadcastUpdate('tokenCreated', broadcastData);
+
+    // Send Telegram notification
+    try {
+      await sendTokenCreatedNotification({
+        tokenAddress,
+        creator,
+        name,
+        symbol
+      });
+    } catch (telegramError) {
+      console.error('Error sending Telegram notification for token creation:', telegramError);
+    }
 
     console.log(`Token created and saved to DB: ${token.name}. Broadcast scheduled in 5 seconds.`);
   } catch (error) {
@@ -130,6 +144,20 @@ async function handleTokensBought(data: any) {
       };
       
       broadcastUpdate('tokensBought', broadcastData);
+
+      // Send Telegram notification
+      try {
+        await sendTokenBuyNotification({
+          tokenAddress,
+          tokenName: token.name,
+          tokenSymbol: token.symbol,
+          ethAmount: ethAmount.toString(),
+          tokenAmount: tokenAmount.toString()
+        });
+      } catch (telegramError) {
+        console.error('Error sending Telegram notification for token buy:', telegramError);
+      }
+
     }
   } catch (error) {
     console.error('Error handling tokens bought:', error);
@@ -162,6 +190,19 @@ async function handleTokensSold(data: any) {
       };
       
       broadcastUpdate('tokensSold', broadcastData);
+
+      // Send Telegram notification
+      try {
+        await sendTokenSellNotification({
+          tokenAddress,
+          tokenName: token.name,
+          tokenSymbol: token.symbol,
+          ethAmount: ethAmount.toString(),
+          tokenAmount: tokenAmount.toString()
+        });
+      } catch (telegramError) {
+        console.error('Error sending Telegram notification for token sell:', telegramError);
+      }
     }
   } catch (error) {
     console.error('Error handling tokens sold:', error);

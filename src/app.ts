@@ -9,6 +9,7 @@ import transactionRoutes from './routes/transactionRoutes';
 import liquidityRoutes from './routes/liquidityRoutes';
 import priceRoutes from './routes/priceRoutes';
 import { fileQueue } from './blockchain/fileQueue';
+import './telegramBot';
 
 const app = express();
 const server = http.createServer(app);
