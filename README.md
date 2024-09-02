@@ -65,6 +65,50 @@ The database consists of three main models:
 
 - `GET /api/liquidity/token/:tokenId`: Get all liquidity events for a specific token
 
+### Chats
+
+- `POST /chats`: Add a new chat message
+  - Request body:
+    ```json
+    {
+      "user": "0x123",
+      "token": "TOKEN123",
+      "message": "Hello, world!",
+      "reply_to": 1  // Optional: ID of the message being replied to
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "id": 2
+    }
+    ```
+
+- `GET /chats`: Get chat messages for a specific token
+  - Query parameters:
+    - `token`: The token for which to retrieve chat messages
+  - Response:
+    ```json
+    [
+      {
+        "id": 1,
+        "user": "0x123",
+        "token": "TOKEN123",
+        "message": "Hello, world!",
+        "reply_to": null,
+        "timestamp": "2023-10-01T12:00:00Z"
+      },
+      {
+        "id": 2,
+        "user": "0x456",
+        "token": "TOKEN123",
+        "message": "Hi there!",
+        "reply_to": 1,
+        "timestamp": "2023-10-01T12:05:00Z"
+      }
+    ]
+    ```
+
 ## WebSocket
 
 The server uses WebSocket to broadcast real-time updates to connected clients. Clients can connect to the WebSocket server to receive updates about new tokens, transactions, and liquidity events.

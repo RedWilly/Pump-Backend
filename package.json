@@ -21,6 +21,7 @@
     "express": "^4.19.2",
     "node-telegram-bot-api": "^0.66.0",
     "prisma": "^5.16.1",
+    "sqlite3": "^5.1.7",
     "uuid": "^10.0.0",
     "viem": "^2.17.2",
     "ws": "^8.18.0"
