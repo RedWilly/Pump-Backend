@@ -304,6 +304,7 @@ export async function getAllTokenAddresses() {
   return prisma.token.findMany({
     select: {
       address: true,
+      name: true,
       symbol: true
     }
   });
@@ -353,6 +354,43 @@ export async function searchTokens(query: string, page: number = 1, pageSize: nu
         ],
       },
     }),
+  ]);
+
+  return {
+    tokens,
+    totalCount,
+    currentPage: page,
+    totalPages: Math.ceil(totalCount / pageSize),
+  };
+}
+
+export async function getTokensByCreator(creatorAddress: string, page: number = 1, pageSize: number = 20) {
+  const skip = (page - 1) * pageSize;
+
+  const [tokens, totalCount] = await Promise.all([
+    prisma.token.findMany({
+      where: {
+        creatorAddress: creatorAddress
+      },
+      select: {
+        address: true,
+        name: true,
+        symbol: true,
+        logo: true,
+        description: true,
+        creatorAddress: true,
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      skip,
+      take: pageSize,
+    }),
+    prisma.token.count({
+      where: {
+        creatorAddress: creatorAddress
+      }
+    })
   ]);
 
   return {

@@ -101,7 +101,6 @@ export async function getTokenInfoAndTransactionsByAddress(req: Request, res: Re
   }
 }
 
-
 export async function getTokenHistoricalPrices(req: Request, res: Response) {
   try {
     const { address } = req.params;
@@ -164,5 +163,20 @@ export async function searchTokens(req: Request, res: Response) {
   } catch (error) {
     console.error('Error searching tokens:', error);
     res.status(500).json({ error: 'Failed to search tokens' });
+  }
+}
+
+export async function getTokensByCreator(req: Request, res: Response) {
+  try {
+    const { creatorAddress } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+    const result = await tokenService.getTokensByCreator(creatorAddress, page, pageSize);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching tokens by creator:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }

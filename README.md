@@ -56,6 +56,32 @@ The database consists of three main models:
 - `GET /api/tokens`: Get all tokens
 - `GET /api/tokens/:id`: Get a specific token by ID
 - `GET /api/tokens/address/:address`: Get a token by its blockchain address
+- `GET /api/tokens/creator/:creatorAddress`: Get tokens created by a specific address
+
+  Example request:
+  ```
+  GET /api/tokens/creator/0x1234567890123456789012345678901234567890?page=1&pageSize=20
+  ```
+
+  Example response:
+  ```json
+  {
+    "tokens": [
+      {
+        "address": "0xabcdef1234567890abcdef1234567890abcdef12",
+        "name": "Example Token",
+        "symbol": "EXT",
+        "logo": "https://example.com/logo.png",
+        "description": "This is an example token",
+        "creatorAddress": "0x1234567890123456789012345678901234567890"
+      },
+      // ... more tokens ...
+    ],
+    "totalCount": 50,
+    "currentPage": 1,
+    "totalPages": 3
+  }
+  ```
 
 ### Transactions
 
