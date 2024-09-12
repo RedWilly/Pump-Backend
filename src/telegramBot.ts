@@ -46,11 +46,11 @@ function getImagePath(type: 'buy' | 'sell' | 'newToken', amount?: number): strin
   }
 
   if (type === 'sell') {
-    return path.join(basePath, amount && amount < 20 ? 'sell1.jpg' : 'sell1.jpg');
+    return path.join(basePath, amount && amount < 0.01 ? 'sell1.jpg' : 'sell1.jpg'); //if sell amount is less than 0.01 eth, it will show the sell1 image on tg
   }
 
   if (type === 'buy') {
-    if (amount && amount < 20) return path.join(basePath, 'buy1.jpg');
+    if (amount && amount < 0.01) return path.join(basePath, 'buy1.jpg'); //if buy amount is less than 0.01 eth, it will show the buy1 image on tg, else it will show the buy2 image
     return path.join(basePath, 'buy2.jpg');
   }
 
@@ -58,7 +58,7 @@ function getImagePath(type: 'buy' | 'sell' | 'newToken', amount?: number): strin
 }
 
 function getViewChartLink(address: string): string {
-  return `<a href="https://www.bondle.xyz/token/${address}"><b><u>📊 View Chart 📊</u></b></a>`;
+  return `<a href="https://your_url.com/token/${address}"><b><u>📊 View Chart 📊</u></b></a>`;
 }
 
 export async function sendTokenCreatedNotification(event: {
@@ -89,14 +89,14 @@ export async function sendTokenBuyNotification(event: {
   ethAmount: string;
   tokenAmount: string;
 }) {
-  const bonePrice = await getPrice();
-  if (bonePrice === null) {
-    console.error('Failed to fetch BONE price');
+  const tokPrice = await getPrice();
+  if (tokPrice === null) {
+    console.error('Failed to fetch ETH price');
     return;
   }
 
-  const boneAmount = weiToEth(event.ethAmount);
-  const usdValue = boneAmount * parseFloat(bonePrice);
+  const ethAmount = weiToEth(event.ethAmount);
+  const usdValue = ethAmount * parseFloat(tokPrice);
   const tokenAmount = weiToEth(event.tokenAmount);
 
   const message = `
@@ -104,14 +104,14 @@ export async function sendTokenBuyNotification(event: {
 --------------------
 🚀 ${event.tokenName} (${event.tokenSymbol})
 <b>💰 Amount:</b> ${formatNumber(tokenAmount)} ${event.tokenSymbol}
-<b>💸 With:</b> ${formatEthAmount(boneAmount.toString())} BONE
+<b>💸 With:</b> ${formatEthAmount(ethAmount.toString())} ETH
 <b>💵 Value in USD:</b> $${formatNumber(usdValue)}
 
 ${getViewChartLink(event.tokenAddress)}
 --------------------
 `;
 
-  await sendTelegramMessageWithImage(message, getImagePath('buy', boneAmount));
+  await sendTelegramMessageWithImage(message, getImagePath('buy', ethAmount));
 }
 
 export async function sendTokenSellNotification(event: {
@@ -121,14 +121,14 @@ export async function sendTokenSellNotification(event: {
   ethAmount: string;
   tokenAmount: string;
 }) {
-  const bonePrice = await getPrice();
-  if (bonePrice === null) {
-    console.error('Failed to fetch BONE price');
+  const tokPrice = await getPrice();
+  if (tokPrice === null) {
+    console.error('Failed to fetch ETH price');
     return;
   }
 
-  const boneAmount = weiToEth(event.ethAmount);
-  const usdValue = boneAmount * parseFloat(bonePrice);
+  const ethAmount = weiToEth(event.ethAmount);
+  const usdValue = ethAmount * parseFloat(tokPrice);
   const tokenAmount = weiToEth(event.tokenAmount);
 
   const message = `
@@ -136,14 +136,14 @@ export async function sendTokenSellNotification(event: {
 ---------------------
 🚀 ${event.tokenName} (${event.tokenSymbol})
 <b>💰 Amount:</b> ${formatNumber(tokenAmount)} ${event.tokenSymbol}
-<b>💸 Received:</b> ${formatEthAmount(boneAmount.toString())} BONE
+<b>💸 Received:</b> ${formatEthAmount(ethAmount.toString())} ETH
 <b>💵 Value in USD:</b> $${formatNumber(usdValue)}
 
 ${getViewChartLink(event.tokenAddress)}
 ---------------------
 `;
 
-  await sendTelegramMessageWithImage(message, getImagePath('sell', boneAmount));
+  await sendTelegramMessageWithImage(message, getImagePath('sell', ethAmount));
 }
 
 console.log('Telegram bot initialized successfully.');

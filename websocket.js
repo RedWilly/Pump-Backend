@@ -1,3 +1,4 @@
+// demo wss server for backend to test websocket connection
 const WebSocket = require('ws');
 const http = require('http');
 const crypto = require('crypto');

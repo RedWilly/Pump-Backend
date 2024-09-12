@@ -14,6 +14,20 @@ This README provides an overview of the Bonding Curve Token Platform backend, in
    ```
    DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
    ```
+  demo>
+  ```
+  DATABASE_URL="database-url"
+  CONTRACT_ADDRESS="contract-address"
+  TELEGRAM_BOT_TOKEN="telegram-bot-token"
+  TELEGRAM_CHAT_ID="telegram-chat-id" 
+  NTBA_FIX_350="true"
+  ```
+
+  while contract address is set in the .env file, please also make sure to also set it in the `src/blockchain/events.ts` file line 11
+
+  telegram is need to send notifications to telegram ( when a token is created, or when a buy or sell happens, etc)
+
+  make sure to update https://your_url.com/token/${address} with your own url in the `src/telegramBot.ts` file line 61
 
 3. Generate Prisma client:
    ```
@@ -161,10 +175,6 @@ These events are processed and the corresponding database operations are perform
 
 The application includes basic error handling for API endpoints. More comprehensive error handling and logging can be implemented as needed.
 
-## Future Improvements
+### Notes
 
-- Implement authentication and authorization
-- Add more comprehensive error handling and logging
-- Implement rate limiting for API endpoints
-- Add unit and integration tests
-- Consider implementing caching for frequently accessed data
+- that chat api is using sqllite and is not saved on postgres db ( it directory is src/db/) this make it much easier to setup and also much much faster

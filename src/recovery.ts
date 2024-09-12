@@ -1,14 +1,16 @@
+//just a simple script to recover tokens that were created but backend was not running
+//it will fetch all the logs from the block that the contract was deployed and then it will create a new token in the database
 import { createPublicClient, http, getAbiItem, Address } from 'viem';
-import { shibarium } from 'viem/chains';
+import { mainnet } from 'viem/chains';
 import { ABI, TOKEN_CREATED_EVENT } from './blockchain/abi';
 import { createToken } from './services/tokenService';
 import { prisma } from './app';
 
-const CONTRACT_ADDRESS = '0x97b962Ab399beBF439a4a303d9754e79d6925EDa';
+const CONTRACT_ADDRESS = '0xcontract_address_here'; // replace 0xcontract_address_here with the contract address
 
 async function recoverTokenCreation(blockNumber: number) {
   const client = createPublicClient({
-    chain: shibarium,
+    chain: mainnet,
     transport: http()
   });
 
@@ -64,5 +66,5 @@ async function recoverTokenCreation(blockNumber: number) {
 }
 
 // Usage
-const blockToRecover = 6041233;
+const blockToRecover = 6041233; //replace 6041233 with the block number that the contract was deployed
 recoverTokenCreation(blockToRecover);

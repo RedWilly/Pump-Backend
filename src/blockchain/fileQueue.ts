@@ -157,7 +157,6 @@ export class FileQueue {
         
         if (!event.lastAttempt || Date.now() - event.lastAttempt > 30 * 60 * 1000) { // 30 minutes
           console.warn(`Event in error queue hasn't been retried: ${file}`);
-          // Optionally, force a retry or take other actions
         }
       }
 

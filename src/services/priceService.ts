@@ -7,7 +7,7 @@ let lastFetchTime = 0;
 
 async function fetchPriceFromMEXC(): Promise<string> {
     try {
-        const response = await axios.get('https://www.mexc.com/open/api/v2/market/ticker?symbol=bone_usdt');
+        const response = await axios.get('https://www.mexc.com/open/api/v2/market/ticker?symbol=eth_usdt');
         const price = response.data.data[0].ask; // Current price from MEXC API using the 'ask' field
         return price;
     } catch (error) {
