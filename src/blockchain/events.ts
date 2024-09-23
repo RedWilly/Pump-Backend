@@ -6,7 +6,7 @@ import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
 import { ABI, TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT } from './abi';
 import { FileQueue } from './fileQueue';
-import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNotification } from '../telegramBot';
+import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNotification, sendLiquidityAddedNotification } from '../telegramBot';
 
 const CONTRACT_ADDRESS = '0xcontract_address_here'; // replace 0xcontract_address_here with the contract address
 
@@ -221,6 +221,19 @@ async function handleLiquidityAdded(data: any) {
         txHash: transactionHash
       });
       broadcastUpdate('liquidityAdded', liquidityEvent);
+
+      // Send Telegram notification
+      try {
+        await sendLiquidityAddedNotification({
+          tokenAddress,
+          tokenName: token.name,
+          tokenSymbol: token.symbol,
+          ethAmount: ethAmount.toString(),
+          tokenAmount: tokenAmount.toString()
+        });
+      } catch (telegramError) {
+        console.error('Error sending Telegram notification for liquidity added:', telegramError);
+      }
     }
   } catch (error) {
     console.error('Error handling liquidity added:', error);

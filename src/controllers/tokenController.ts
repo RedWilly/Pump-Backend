@@ -180,3 +180,17 @@ export async function getTokensByCreator(req: Request, res: Response) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export async function getTokensRankedByVolumeAndTrades(req: Request, res: Response) {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+    const result = await tokenService.getTokensRankedByVolumeAndTrades(page, pageSize);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error in getTokensRankedByVolumeAndTrades:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}

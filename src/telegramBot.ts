@@ -38,7 +38,7 @@ function weiToEth(wei: string): number {
   return Number(wei) / 1e18;
 }
 
-function getImagePath(type: 'buy' | 'sell' | 'newToken', amount?: number): string {
+function getImagePath(type: 'buy' | 'sell' | 'newToken' | 'liquidity', amount?: number): string {
   const basePath = path.join(__dirname, '..', 'images');
   
   if (type === 'newToken') {
@@ -54,11 +54,15 @@ function getImagePath(type: 'buy' | 'sell' | 'newToken', amount?: number): strin
     return path.join(basePath, 'buy2.jpg');
   }
 
+  if (type === 'liquidity') {
+    return path.join(basePath, 'ended.jpg');
+  }
+
   throw new Error('Invalid image type');
 }
 
 function getViewChartLink(address: string): string {
-  return `<a href="https://your_url.com/token/${address}"><b><u>📊 View Chart 📊</u></b></a>`;
+  return `<a href="https://app.degentralized.fun/token/${address}"><b><u>📊 View Chart 📊</u></b></a>`;
 }
 
 export async function sendTokenCreatedNotification(event: {
@@ -144,6 +148,38 @@ ${getViewChartLink(event.tokenAddress)}
 `;
 
   await sendTelegramMessageWithImage(message, getImagePath('sell', ethAmount));
+}
+
+export async function sendLiquidityAddedNotification(event: {
+  tokenAddress: string;
+  tokenName: string;
+  tokenSymbol: string;
+  ethAmount: string;
+  tokenAmount: string;
+}) {
+  const tokPrice = await getPrice();
+  if (tokPrice === null) {
+    console.error('Failed to fetch ETH price');
+    return;
+  }
+
+  const ethAmount = weiToEth(event.ethAmount);
+  const usdValue = ethAmount * parseFloat(tokPrice);
+  const tokenAmount = weiToEth(event.tokenAmount);
+
+  const message = `
+<b>💧 Liquidity Added:</b>
+---------------------
+🚀 ${event.tokenName} (${event.tokenSymbol})
+<b>💰 Token Amount:</b> ${formatNumber(tokenAmount)} ${event.tokenSymbol}
+<b>💸 ETH Amount:</b> ${formatEthAmount(ethAmount.toString())} ETH
+<b>💵 Value in USD:</b> $${formatNumber(usdValue)}
+
+${getViewChartLink(event.tokenAddress)}
+---------------------
+`;
+
+  await sendTelegramMessageWithImage(message, getImagePath('liquidity'));
 }
 
 console.log('Telegram bot initialized successfully.');

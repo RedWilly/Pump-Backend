@@ -6,7 +6,7 @@ import { ABI, TOKEN_CREATED_EVENT } from './blockchain/abi';
 import { createToken } from './services/tokenService';
 import { prisma } from './app';
 
-const CONTRACT_ADDRESS = '0xcontract_address_here'; // replace 0xcontract_address_here with the contract address
+const CONTRACT_ADDRESS = '0xbe0D65cb03D7Cb51f1862b8Ddc58322Ff73aAF85'; // replace 0xcontract_address_here with the contract address
 
 async function recoverTokenCreation(blockNumber: number) {
   const client = createPublicClient({

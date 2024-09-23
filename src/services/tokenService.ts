@@ -400,3 +400,70 @@ export async function getTokensByCreator(creatorAddress: string, page: number = 
     totalPages: Math.ceil(totalCount / pageSize),
   };
 }
+
+export async function getTokensRankedByVolumeAndTrades(page: number = 1, pageSize: number = 20) {
+  console.log('Starting getTokensRankedByVolumeAndTrades');
+  const skip = (page - 1) * pageSize;
+
+  try {
+    const [tokens, totalCount] = await Promise.all([
+      prisma.token.findMany({
+        select: {
+          id: true,
+          address: true,
+          name: true,
+          symbol: true,
+          logo: true,
+          description: true,
+          transactions: {
+            select: {
+              ethAmount: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            transactions: {
+              _count: 'desc',
+            },
+          },
+        ],
+        skip,
+        take: pageSize,
+      }),
+      prisma.token.count(),
+    ]);
+
+    console.log('Fetched tokens:', tokens.length);
+
+    const rankedTokens = tokens.map((token) => ({
+      ...token,
+      totalVolume: token.transactions.reduce((sum, tx) => {
+        const amount = typeof tx.ethAmount === 'string' ? parseFloat(tx.ethAmount) : (tx.ethAmount || 0);
+        return sum + amount;
+      }, 0),
+      totalTrades: token.transactions.length,
+    }));
+
+    console.log('Processed ranked tokens');
+
+    rankedTokens.sort((a, b) => {
+      if (b.totalVolume !== a.totalVolume) {
+        return b.totalVolume - a.totalVolume;
+      }
+      return b.totalTrades - a.totalTrades;
+    });
+
+    console.log('Sorted ranked tokens');
+
+    return {
+      tokens: rankedTokens,
+      totalCount,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / pageSize),
+    };
+  } catch (error) {
+    console.error('Error in getTokensRankedByVolumeAndTrades:', error);
+    throw error;
+  }
+}
