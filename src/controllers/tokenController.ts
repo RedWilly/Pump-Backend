@@ -180,3 +180,18 @@ export async function getTokensByCreator(req: Request, res: Response) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export async function getListedTokens(req: Request, res: Response) {
+  try {
+    const listedTokens = await tokenService.getListedTokens();
+    
+    if (listedTokens.length > 0) {
+      res.json(listedTokens);
+    } else {
+      res.status(404).json({ message: "No listed tokens found" });
+    }
+  } catch (error) {
+    console.error('Error fetching listed tokens:', error);
+    res.status(500).json({ error: 'Failed to fetch listed tokens' });
+  }
+}

@@ -400,3 +400,34 @@ export async function getTokensByCreator(creatorAddress: string, page: number = 
     totalPages: Math.ceil(totalCount / pageSize),
   };
 }
+
+export async function getListedTokens() {
+  try {
+    const listedTokens = await prisma.token.findMany({
+      where: {
+        liquidityEvents: {
+          some: {}
+        }
+      },
+      select: {
+        name: true,
+        symbol: true,
+        logo: true,
+        address: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return listedTokens.map(token => ({
+      name: token.name,
+      symbol: token.symbol,
+      image: token.logo || '',
+      address: token.address
+    }));
+  } catch (error) {
+    console.error('Error fetching listed tokens:', error);
+    throw error;
+  }
+}
