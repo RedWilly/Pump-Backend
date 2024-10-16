@@ -6,7 +6,7 @@ import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
 import { ABI, TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT } from './abi';
 import { FileQueue } from './fileQueue';
-import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNotification } from '../telegramBot';
+import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNotification, sendLiquidityAddedNotification } from '../telegramBot';
 
 const CONTRACT_ADDRESSES = [
   '0x97b962Ab399beBF439a4a303d9754e79d6925EDa',
@@ -210,6 +210,17 @@ async function handleLiquidityAdded(data: any) {
         txHash: transactionHash
       });
       broadcastUpdate('liquidityAdded', liquidityEvent);
+
+      // Send Telegram notification
+      try {
+        await sendLiquidityAddedNotification({
+          tokenAddress,
+          tokenName: token.name,
+          tokenSymbol: token.symbol,
+        });
+      } catch (telegramError) {
+        console.error('Error sending Telegram notification for token sell:', telegramError);
+      }
     }
   } catch (error) {
     console.error('Error handling liquidity added:', error);

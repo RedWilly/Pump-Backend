@@ -38,11 +38,15 @@ function weiToEth(wei: string): number {
   return Number(wei) / 1e18;
 }
 
-function getImagePath(type: 'buy' | 'sell' | 'newToken', amount?: number): string {
+function getImagePath(type: 'buy' | 'sell' | 'newToken' | 'liquidityAdded', amount?: number): string {
   const basePath = path.join(__dirname, '..', 'images');
   
   if (type === 'newToken') {
     return path.join(basePath, 'newtoken.jpg');
+  }
+
+  if (type === 'liquidityAdded') {
+    return path.join(basePath, 'Lpadded.png');
   }
 
   if (type === 'sell') {
@@ -59,6 +63,10 @@ function getImagePath(type: 'buy' | 'sell' | 'newToken', amount?: number): strin
 
 function getViewChartLink(address: string): string {
   return `<a href="https://www.bondle.xyz/token/${address}"><b><u>📊 View Chart 📊</u></b></a>`;
+}
+
+function getChewySwapLink(tokenAddress: string): string {
+  return `https://chewyswap.dog/swap/?outputCurrency=${tokenAddress}&chain=shibarium`;
 }
 
 export async function sendTokenCreatedNotification(event: {
@@ -144,6 +152,25 @@ ${getViewChartLink(event.tokenAddress)}
 `;
 
   await sendTelegramMessageWithImage(message, getImagePath('sell', boneAmount));
+}
+
+
+export async function sendLiquidityAddedNotification(event: {
+  tokenAddress: string;
+  tokenName: string;
+  tokenSymbol: string;
+}) {
+  const message = `
+<b>🌊 Liquidity Added:</b>
+--------------------
+🚀 ${event.tokenName} (${event.tokenSymbol})
+📍 Token Address: <b>${shortenAddress(event.tokenAddress)}</b>
+
+<a href="${getChewySwapLink(event.tokenAddress)}"><b>🐶 Buy on Chewy 🐶</b></a>
+--------------------
+`;
+
+  await sendTelegramMessageWithImage(message, getImagePath('liquidityAdded'));
 }
 
 console.log('Telegram bot initialized successfully.');
