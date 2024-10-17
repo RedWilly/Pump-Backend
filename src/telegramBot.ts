@@ -46,7 +46,7 @@ function getImagePath(type: 'buy' | 'sell' | 'newToken' | 'liquidityAdded', amou
   }
 
   if (type === 'liquidityAdded') {
-    return path.join(basePath, 'Lpadded.png');
+    return path.join(basePath, 'Lpadded.jpg');
   }
 
   if (type === 'sell') {
