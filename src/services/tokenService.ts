@@ -48,9 +48,10 @@ export async function getTokenByAddress(address: string) {
   });
 }
 
-export async function getAllTokens(page: number = 1, pageSize: number = 20) {
+export async function getAllTokens(page: number, pageSize: number) {
   const skip = (page - 1) * pageSize;
-  const [tokens, totalCount] = await Promise.all([
+  
+  const [tokens, total] = await Promise.all([
     prisma.token.findMany({
       where: {
         liquidityEvents: {
@@ -90,9 +91,12 @@ export async function getAllTokens(page: number = 1, pageSize: number = 20) {
 
   return {
     tokens,
-    totalCount,
-    currentPage: page,
-    totalPages: Math.ceil(totalCount / pageSize),
+    pagination: {
+      currentPage: page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+      totalItems: total
+    }
   };
 }
 

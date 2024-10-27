@@ -38,18 +38,34 @@ export class FileQueue {
   // Custom replacer function for JSON.stringify
   private jsonReplacer(key: string, value: any): any {
     if (typeof value === 'bigint') {
-      return value.toString() + 'n';
+      return {
+        type: 'bigint',
+        value: value.toString()
+      };
     }
     return value;
   }
 
-  // Custom reviver function for JSON.parse
   private jsonReviver(key: string, value: any): any {
-    if (typeof value === 'string' && value.endsWith('n')) {
-      return BigInt(value.slice(0, -1));
+    if (value && typeof value === 'object' && value.type === 'bigint') {
+      try {
+        return BigInt(value.value);
+      } catch (error) {
+        console.error(`Failed to convert ${value.value} to BigInt:`, error);
+        return value.value; // Return the original string value if conversion fails
+      }
+    } else if (typeof value === 'string' && /^\d+n$/.test(value)) {
+      // Handle strings ending with 'n' as BigInt values
+      try {
+        return BigInt(value.slice(0, -1));
+      } catch (error) {
+        console.error(`Failed to convert ${value} to BigInt:`, error);
+        return value;
+      }
     }
     return value;
   }
+  
 
   async enqueue(type: string, data: any): Promise<void> {
     const event: QueuedEvent = { id: uuidv4(), type, data, retries: 0 };
@@ -66,18 +82,22 @@ export class FileQueue {
       for (const file of files) {
         const filePath = path.join(QUEUE_DIR, file);
         const content = await fs.readFile(filePath, 'utf-8');
-        const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
-
+        
+        console.log(`Processing file ${file}, content:`, content); // Debug log
+        
         try {
+          const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
           await processEvent(event.type, event.data);
           await fs.unlink(filePath);
         } catch (error) {
-          console.error(`Error processing event ${event.id}:`, error);
-          await this.handleFailedEvent(event, filePath);
+          console.error(`Error processing file ${file}:`, error);
+          // Read the file content without the custom reviver for debugging
+          const rawEvent = JSON.parse(content);
+          console.error('Raw event data:', rawEvent);
+          await this.handleFailedEvent(rawEvent, filePath);
         }
       }
 
-      // Process retry queue
       await this.processRetryQueue(processEvent);
     } catch (error) {
       console.error('Error processing queue:', error);

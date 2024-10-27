@@ -11,6 +11,15 @@ export async function createTransaction(data: {
   tokenPrice: string;
   txHash: string;
 }) {
+  const existingTransaction = await prisma.transaction.findUnique({
+    where: { txHash: data.txHash },
+  });
+
+  if (existingTransaction) {
+    console.log(`Transaction with txHash ${data.txHash} already exists. Skipping insertion.`);
+    return existingTransaction;
+  }
+  
   return prisma.transaction.create({
     data: {
       ...data,

@@ -3,9 +3,18 @@ import * as tokenService from '../services/tokenService';
 
 export async function getAllTokens(req: Request, res: Response) {
   try {
-    const tokens = await tokenService.getAllTokens();
-    res.json(tokens);
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+    const result = await tokenService.getAllTokens(page, pageSize);
+    
+    if (result.tokens.length > 0) {
+      res.json(result);
+    } else {
+      res.status(404).json({ message: "No tokens found" });
+    }
   } catch (error) {
+    console.error('Error fetching all tokens:', error);
     res.status(500).json({ error: 'Failed to fetch tokens' });
   }
 }
