@@ -91,12 +91,10 @@ export async function getAllTokens(page: number, pageSize: number) {
 
   return {
     tokens,
-    pagination: {
       currentPage: page,
-      pageSize,
       totalPages: Math.ceil(total / pageSize),
-      totalItems: total
-    }
+      totalCount: total
+    
   };
 }
 
