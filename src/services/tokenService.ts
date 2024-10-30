@@ -71,6 +71,11 @@ export async function getAllTokens(page: number, pageSize: number) {
         description: true,
         createdAt: true,
         updatedAt: true,
+        website: true,
+        telegram: true,
+        discord: true,
+        twitter: true,
+        youtube: true,
         _count: {
           select: {
             liquidityEvents: true
