@@ -204,3 +204,16 @@ export async function getListedTokens(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to fetch listed tokens' });
   }
 }
+
+export const getTrendingTokens = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    
+    const result = await tokenService.getTrendingTokens(page, pageSize);
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting trending tokens:', error);
+    res.status(500).json({ error: 'Failed to get trending tokens' });
+  }
+};

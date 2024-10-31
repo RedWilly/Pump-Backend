@@ -3,20 +3,31 @@ import * as tokenController from '../controllers/tokenController';
 
 const router = express.Router();
 
-router.get('/search', tokenController.searchTokens);
+/** 
+ * Route Definitions
+ */
 
+// Static Routes
+router.get('/search', tokenController.searchTokens);
 router.get('/addresses', tokenController.getAllTokenAddresses);
-router.patch('/update/:address', tokenController.updateTokenInfo);
+router.get('/listed', tokenController.getListedTokens);
+router.get('/recent', tokenController.getRecentTokens);
+router.get('/with-liquidityEvent', tokenController.getTokensWithLiquidity);
+router.get('/trending', tokenController.getTrendingTokens);
+
+// Grouped Routes for '/address'
 router.get('/address/:address/historical-prices', tokenController.getTokenHistoricalPrices);
 router.get('/address/:address/info-and-transactions', tokenController.getTokenInfoAndTransactionsByAddress);
-
-router.get('/listed', tokenController.getListedTokens);
-router.get('/recent', tokenController.getRecentTokens); 
-router.get('/with-liquidityEvent', tokenController.getTokensWithLiquidity);
+router.patch('/address/:address/update', tokenController.updateTokenInfo);
 router.get('/address/:address', tokenController.getTokenByAddress);
-router.get('/', tokenController.getAllTokens);
+
+// Creator Routes
+router.get('/creator/:creatorAddress', tokenController.getTokensByCreator);
+
+// Dynamic Routes
 router.get('/:id', tokenController.getTokenById);
 
-router.get('/creator/:creatorAddress', tokenController.getTokensByCreator);
+// Default Route
+router.get('/', tokenController.getAllTokens);
 
 export default router;
