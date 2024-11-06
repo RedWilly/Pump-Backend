@@ -18,7 +18,8 @@ router.get('/trending', tokenController.getTrendingTokens);
 // Grouped Routes for '/address'
 router.get('/address/:address/historical-prices', tokenController.getTokenHistoricalPrices);
 router.get('/address/:address/info-and-transactions', tokenController.getTokenInfoAndTransactionsByAddress);
-router.patch('/address/:address/update', tokenController.updateTokenInfo);
+// router.patch('/address/:address/update', tokenController.updateTokenInfo);
+router.patch('/update/:address', tokenController.updateTokenInfo);
 router.get('/address/:address', tokenController.getTokenByAddress);
 
 // Creator Routes
