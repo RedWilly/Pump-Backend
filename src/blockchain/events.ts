@@ -1,19 +1,18 @@
 import { createPublicClient, http, Address, ContractFunctionExecutionError } from 'viem';
 import { shibarium } from 'viem/chains';
 import { prisma, broadcastUpdate } from '../app';
-import { createToken, getTokenByAddress, updateToken } from '../services/tokenService';
+import { createToken, getTokenByAddress } from '../services/tokenService';
 import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
 import { ABI, TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT } from './abi';
-import { FileQueue } from './fileQueue';
+import { fileQueue } from './fileQueue';
 import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNotification, sendLiquidityAddedNotification } from '../telegramBot';
 
 const CONTRACT_ADDRESSES = [
   '0x97b962Ab399beBF439a4a303d9754e79d6925EDa',
-  '0xbe974ec5d005a8a43dcd6b9a0e55d8dfbe17a043'
+  '0x06d6287b14455525Ca2BEE854D5A5aE9D9A87602'
 ];
 
-const fileQueue = new FileQueue();
 
 export async function setupBlockchainListeners() {
   const client = createPublicClient({

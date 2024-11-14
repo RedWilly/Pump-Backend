@@ -1,6 +1,8 @@
 // tokenService.ts
 import { prisma } from '../app';
 import { Prisma } from '@prisma/client';
+import { updateQueue } from '../blockchain/updateQueue';
+
 
 export async function createToken(data: {
   address: string;
@@ -28,10 +30,9 @@ export async function updateToken(address: string, data: {
   twitter?: string;
   youtube?: string;
 }) {
-  return prisma.token.update({
-    where: { address },
-    data
-  });
+  // Add update request to queue instead of direct update
+  await updateQueue.addToQueue(address, data);
+  return { message: 'Update queued successfully' };
 }
 
 export async function getTokenByAddress(address: string) {

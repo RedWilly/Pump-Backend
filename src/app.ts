@@ -12,6 +12,7 @@ import { fileQueue } from './blockchain/fileQueue';
 import './telegramBot';
 import bodyParser from 'body-parser';
 import db from './db';
+import { updateQueue } from './blockchain/updateQueue';
 
 const app = express();
 const server = http.createServer(app);
@@ -157,4 +158,9 @@ app.get('/chats', (req, res) => {
     }
     res.json(rows);
   });
+});
+
+app.get('/api/update-queue/status', (req, res) => {
+  const status = updateQueue.getQueueStatus();
+  res.json(status);
 });

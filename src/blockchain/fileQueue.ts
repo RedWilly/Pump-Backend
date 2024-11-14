@@ -1,3 +1,4 @@
+// fileQueue.ts
 import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -23,9 +24,28 @@ interface QueuedEvent {
 export class FileQueue {
   private processing: boolean = false;
 
-  constructor() {
+  // Define event priority (lower number = higher priority)
+  private static EVENT_PRIORITY: { [key: string]: number } = {
+    'TokenCreated': 1,
+    'TokensBought': 2,
+    'LiquidityAdded': 3,
+    'TokensSold': 4,
+  };
+
+  // Private constructor to prevent direct instantiation
+  private constructor() {
     this.ensureDirectories();
     this.startIntegrityChecks();
+  }
+
+  // Static method to get the singleton instance
+  private static instance: FileQueue;
+
+  public static getInstance(): FileQueue {
+    if (!FileQueue.instance) {
+      FileQueue.instance = new FileQueue();
+    }
+    return FileQueue.instance;
   }
 
   private async ensureDirectories() {
@@ -65,7 +85,6 @@ export class FileQueue {
     }
     return value;
   }
-  
 
   async enqueue(type: string, data: any): Promise<void> {
     const event: QueuedEvent = { id: uuidv4(), type, data, retries: 0 };
@@ -79,21 +98,49 @@ export class FileQueue {
 
     try {
       const files = await fs.readdir(QUEUE_DIR);
-      for (const file of files) {
-        const filePath = path.join(QUEUE_DIR, file);
+      
+      // Map files to their event types
+      const fileEvents = await Promise.all(
+        files.map(async (file) => {
+          const filePath = path.join(QUEUE_DIR, file);
+          const content = await fs.readFile(filePath, 'utf-8');
+          try {
+            const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
+            return { file, filePath, type: event.type };
+          } catch (error) {
+            console.error(`Error parsing JSON for file ${file}:`, error);
+            return { file, filePath, type: 'unknown' };
+          }
+        })
+      );
+
+      // Sort files based on priority
+      fileEvents.sort((a, b) => {
+        const priorityA = FileQueue.EVENT_PRIORITY[a.type] || 100; // Default low priority
+        const priorityB = FileQueue.EVENT_PRIORITY[b.type] || 100;
+        return priorityA - priorityB;
+      });
+
+      for (const { file, filePath, type } of fileEvents) {
         const content = await fs.readFile(filePath, 'utf-8');
-        
-        console.log(`Processing file ${file}, content:`, content); // Debug log
-        
+
+        console.log(`Processing file ${file}, type: ${type}, content:`, content); // Debug log
+
         try {
           const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
           await processEvent(event.type, event.data);
           await fs.unlink(filePath);
+          console.log(`Successfully processed and removed file ${file}`);
         } catch (error) {
           console.error(`Error processing file ${file}:`, error);
           // Read the file content without the custom reviver for debugging
-          const rawEvent = JSON.parse(content);
-          console.error('Raw event data:', rawEvent);
+          let rawEvent;
+          try {
+            rawEvent = JSON.parse(content);
+          } catch (parseError) {
+            console.error(`Failed to parse event data for file ${file}:`, parseError);
+            rawEvent = { id: 'unknown', type: 'unknown', data: {} };
+          }
           await this.handleFailedEvent(rawEvent, filePath);
         }
       }
@@ -134,6 +181,7 @@ export class FileQueue {
         try {
           await processEvent(event.type, event.data);
           await fs.unlink(filePath);
+          console.log(`Successfully retried and processed event ${event.id}`);
         } catch (error) {
           console.error(`Error retrying event ${event.id}:`, error);
           await this.handleFailedEvent(event, filePath);
@@ -280,4 +328,5 @@ export class FileQueue {
   }
 }
 
-export const fileQueue = new FileQueue();
+// Export the singleton instance
+export const fileQueue = FileQueue.getInstance();
