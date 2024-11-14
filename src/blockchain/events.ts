@@ -10,7 +10,7 @@ import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNo
 
 const CONTRACT_ADDRESSES = [
   '0x97b962Ab399beBF439a4a303d9754e79d6925EDa',
-  '0x06d6287b14455525Ca2BEE854D5A5aE9D9A87602'
+  '0x9272ddC213739Dad3B499C2C1245ff4A2cDe313A'
 ];
 
 
