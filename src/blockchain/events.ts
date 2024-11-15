@@ -1,5 +1,5 @@
-import { createPublicClient, http, Address, ContractFunctionExecutionError } from 'viem';
-import { shibarium } from 'viem/chains';
+import { Address, ContractFunctionExecutionError } from 'viem';
+import { client } from './client';
 import { prisma, broadcastUpdate } from '../app';
 import { createToken, getTokenByAddress } from '../services/tokenService';
 import { createTransaction } from '../services/transactionService';
@@ -13,13 +13,38 @@ const CONTRACT_ADDRESSES = [
   '0x9272ddC213739Dad3B499C2C1245ff4A2cDe313A'
 ];
 
+// Add shared event type definitions
+export interface BaseEventData {
+  blockNumber: bigint;
+  transactionHash: string;
+  contractAddress: string;
+  timestamp: Date;
+  type: 'creation' | 'buy' | 'sell' | 'liquidity';
+}
+
+export interface TokenCreatedData extends BaseEventData {
+  tokenAddress: string;
+  creator: string;
+  name: string;
+  symbol: string;
+}
+
+// Add similar interfaces for other event types
+
+// Add event tracking
+const processedBlocks = new Set<string>();
+
+function isBlockProcessed(blockNumber: bigint, eventType: string): boolean {
+  const key = `${blockNumber.toString()}-${eventType}`;
+  return processedBlocks.has(key);
+}
+
+function markBlockProcessed(blockNumber: bigint, eventType: string): void {
+  const key = `${blockNumber.toString()}-${eventType}`;
+  processedBlocks.add(key);
+}
 
 export async function setupBlockchainListeners() {
-  const client = createPublicClient({
-    chain: shibarium,
-    transport: http()
-  });
-
   const eventNames = [TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT] as const;
 
   CONTRACT_ADDRESSES.forEach(contractAddress => {
@@ -39,16 +64,71 @@ export async function setupBlockchainListeners() {
 
 async function handleEvents(eventType: string, logs: any, contractAddress: string) {
   for (const log of logs) {
-    await fileQueue.enqueue(eventType, { 
-      ...log.args, 
-      blockNumber: log.blockNumber, 
-      transactionHash: log.transactionHash,
-      contractAddress: contractAddress
+    // Check if we've already processed this block for this event type
+    if (isBlockProcessed(log.blockNumber, eventType)) {
+      console.log(`Block ${log.blockNumber} already processed for ${eventType}, skipping...`);
+      continue;
+    }
+
+    // Get block timestamp for real-time events too
+    const block = await client.getBlock({
+      blockNumber: log.blockNumber
     });
+    
+    const timestamp = block.timestamp ? new Date(Number(block.timestamp) * 1000) : new Date();
+
+    // Add type based on eventType
+    const type = eventType === TOKENS_BOUGHT_EVENT ? 'buy' :
+                 eventType === TOKENS_SOLD_EVENT ? 'sell' :
+                 eventType === TOKEN_CREATED_EVENT ? 'creation' :
+                 eventType === LIQUIDITY_ADDED_EVENT ? 'liquidity' : undefined;
+
+    try {
+      await fileQueue.enqueue(eventType, { 
+        ...log.args, 
+        blockNumber: log.blockNumber, 
+        transactionHash: log.transactionHash,
+        contractAddress: contractAddress,
+        timestamp,
+        type
+      });
+
+      // Mark this block as processed for this event type
+      markBlockProcessed(log.blockNumber, eventType);
+    } catch (error) {
+      console.error(`Error processing block ${log.blockNumber} for ${eventType}:`, error);
+    }
+  }
+}
+
+function validateEvent(type: string, data: any): boolean {
+  const processedEvents = new Set<string>();
+  const eventKey = `${data.transactionHash}-${type}`;
+  
+  if (processedEvents.has(eventKey)) {
+    console.log('Event already processed:', eventKey);
+    return false;
+  }
+
+  // Add validation based on event type
+  switch (type) {
+    case TOKEN_CREATED_EVENT:
+      return !!(data.tokenAddress && data.creator && data.name && data.symbol);
+    case TOKENS_BOUGHT_EVENT:
+    case TOKENS_SOLD_EVENT:
+      return !!(data.token && data.ethAmount && data.tokenAmount);
+    case LIQUIDITY_ADDED_EVENT:
+      return !!(data.token && data.ethAmount && data.tokenAmount);
+    default:
+      return false;
   }
 }
 
 async function processEvent(type: string, data: any): Promise<void> {
+  if (!validateEvent(type, data)) {
+    console.error('Invalid event data:', { type, data });
+    return;
+  }
   switch (type) {
     case TOKEN_CREATED_EVENT:
       await handleTokenCreated(data);
@@ -65,14 +145,29 @@ async function processEvent(type: string, data: any): Promise<void> {
   }
 }
 
+async function processEventWithRetry(type: string, data: any, retries = 3): Promise<void> {
+  try {
+    await processEvent(type, data);
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Retrying event processing. Attempts remaining: ${retries}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return processEventWithRetry(type, data, retries - 1);
+    }
+    console.error('Event processing failed after retries:', error);
+    await fileQueue.addToDeadLetterQueue(type, data);
+  }
+}
+
 async function handleTokenCreated(data: any) {
-  const { tokenAddress, creator, name, symbol } = data;
+  const { tokenAddress, creator, name, symbol, timestamp } = data;
   try {
     const token = await createToken({
       address: tokenAddress,
       creatorAddress: creator,
       name,
-      symbol
+      symbol,
+      timestamp
     });
 
     // Prepare broadcast data
@@ -83,7 +178,7 @@ async function handleTokenCreated(data: any) {
       tokenAddress: tokenAddress,
       name: token.name,
       symbol: token.symbol,
-      logo: token.logo || '', //logo might be empty since it will need to be updated first/call first
+      logo: token.logo || '',
     };
 
     broadcastUpdate('tokenCreated', broadcastData);
@@ -107,7 +202,7 @@ async function handleTokenCreated(data: any) {
 }
 
 async function handleTokensBought(data: any) {
-  const { token: tokenAddress, buyer, ethAmount, tokenAmount, blockNumber, transactionHash, contractAddress } = data;
+  const { token: tokenAddress, buyer, ethAmount, tokenAmount, blockNumber, transactionHash, contractAddress, timestamp } = data;
   try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
@@ -120,7 +215,8 @@ async function handleTokensBought(data: any) {
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
         tokenPrice: tokenPrice.toString(),
-        txHash: transactionHash
+        txHash: transactionHash,
+        timestamp
       });
 
       // Flattened broadcast data
@@ -145,7 +241,6 @@ async function handleTokensBought(data: any) {
       } catch (telegramError) {
         console.error('Error sending Telegram notification for token buy:', telegramError);
       }
-
     }
   } catch (error) {
     console.error('Error handling tokens bought:', error);
@@ -153,7 +248,7 @@ async function handleTokensBought(data: any) {
 }
 
 async function handleTokensSold(data: any) {
-  const { token: tokenAddress, seller, tokenAmount, ethAmount, blockNumber, transactionHash, contractAddress } = data;
+  const { token: tokenAddress, seller, tokenAmount, ethAmount, blockNumber, transactionHash, contractAddress, timestamp } = data;
   try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
@@ -166,7 +261,8 @@ async function handleTokensSold(data: any) {
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
         tokenPrice: tokenPrice.toString(),
-        txHash: transactionHash
+        txHash: transactionHash,
+        timestamp
       });
 
       // Flattened broadcast data
@@ -198,7 +294,7 @@ async function handleTokensSold(data: any) {
 }
 
 async function handleLiquidityAdded(data: any) {
-  const { token: tokenAddress, ethAmount, tokenAmount, transactionHash } = data;
+  const { token: tokenAddress, ethAmount, tokenAmount, transactionHash, timestamp } = data;
   try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
@@ -206,7 +302,8 @@ async function handleLiquidityAdded(data: any) {
         tokenId: token.id,
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
-        txHash: transactionHash
+        txHash: transactionHash,
+        timestamp
       });
       broadcastUpdate('liquidityAdded', liquidityEvent);
 
@@ -227,11 +324,6 @@ async function handleLiquidityAdded(data: any) {
 }
 
 async function calculateTokenPrice(tokenAddress: Address, blockNumber: bigint, contractAddress: string): Promise<string> {
-  const client = createPublicClient({
-    chain: shibarium,
-    transport: http()
-  });
-
   try {
     const price = await client.readContract({
       address: contractAddress as Address,
@@ -250,4 +342,18 @@ async function calculateTokenPrice(tokenAddress: Address, blockNumber: bigint, c
       throw new Error('Failed to fetch token price');
     }
   }
+}
+
+export async function getEventProcessingStatus() {
+  const queueStats = await fileQueue.getQueueStats();
+  
+  return {
+    processedBlocks: processedBlocks.size,
+    lastProcessedBlock: Array.from(processedBlocks).pop(),
+    queueStats: {
+      pending: queueStats.main,
+      errors: queueStats.error,
+      deadLetter: queueStats.dlq
+    }
+  };
 }

@@ -1,5 +1,5 @@
-import { createPublicClient, http, parseAbi } from 'viem';
-import { shibarium } from 'viem/chains';
+import { parseAbi } from 'viem';
+import { client } from '../blockchain/client';
 import { PrismaClient } from '@prisma/client';
 import { createToken } from '../services/tokenService';
 
@@ -10,11 +10,6 @@ const ABI = parseAbi([
 ]);
 
 const CONTRACT_ADDRESS = '0x97b962Ab399beBF439a4a303d9754e79d6925EDa';
-
-const client = createPublicClient({
-  chain: shibarium,
-  transport: http()
-});
 
 async function refetchTokenCreation() {
   const createBlock = 5679076;

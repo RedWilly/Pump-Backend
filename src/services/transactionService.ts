@@ -10,6 +10,7 @@ export async function createTransaction(data: {
   tokenAmount: string;
   tokenPrice: string;
   txHash: string;
+  timestamp?: Date;
 }) {
   const existingTransaction = await prisma.transaction.findUnique({
     where: { txHash: data.txHash },
@@ -25,7 +26,8 @@ export async function createTransaction(data: {
       ...data,
       ethAmount: data.ethAmount.toString(),
       tokenAmount: data.tokenAmount.toString(),
-      tokenPrice: data.tokenPrice.toString()
+      tokenPrice: data.tokenPrice.toString(),
+      timestamp: data.timestamp || new Date()
     }
   });
 }
