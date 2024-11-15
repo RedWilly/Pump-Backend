@@ -2,6 +2,8 @@
 import { prisma } from '../app';
 import { Prisma } from '@prisma/client';
 import { updateQueue } from '../blockchain/updateQueue';
+import { client } from '../blockchain/client';
+import { Address } from 'viem';
 
 
 export async function createToken(data: {
@@ -11,14 +13,81 @@ export async function createToken(data: {
   symbol: string;
   logo?: string;
   description?: string;
+  timestamp?: Date;
 }) {
+  const { timestamp, ...tokenData } = data;
+  
   return prisma.token.create({
     data: {
-      ...data,
+      ...tokenData,
       logo: data.logo || '',
-      description: data.description || ''
+      description: data.description || '',
+      createdAt: timestamp || new Date()
     }
   });
+}
+
+async function getTokenInfoFromChain(address: string) {
+  const tokenAbi = [
+    'function name() view returns (string)',
+    'function symbol() view returns (string)'
+  ];
+
+  try {
+    // Get token info
+    const [name, symbol] = await Promise.all([
+      client.readContract({
+        address: address as Address,
+        abi: tokenAbi,
+        functionName: 'name'
+      }),
+      client.readContract({
+        address: address as Address,
+        abi: tokenAbi,
+        functionName: 'symbol'
+      })
+    ]);
+
+    // Get contract creation transaction by looking for OwnershipTransferred event
+    const ownershipEventAbi = {
+      type: 'event' as const,
+      name: 'OwnershipTransferred',
+      inputs: [
+        { type: 'address', name: 'previousOwner', indexed: true },
+        { type: 'address', name: 'newOwner', indexed: true }
+      ]
+    };
+
+    const logs = await client.getLogs({
+      address: address as Address,
+      event: ownershipEventAbi,
+      fromBlock: BigInt(0),
+      toBlock: 'latest'
+    });
+
+    let creatorAddress = '0x0000000000000000000000000000000000000000';
+    
+    if (logs.length > 0) {
+      // Get the first OwnershipTransferred event's transaction
+      const firstOwnershipTx = await client.getTransaction({
+        hash: logs[0].transactionHash
+      });
+
+      if (firstOwnershipTx) {
+        // Use the transaction sender as the creator address
+        creatorAddress = firstOwnershipTx.from;
+      }
+    }
+
+    return { 
+      name, 
+      symbol, 
+      creatorAddress 
+    };
+  } catch (error) {
+    console.error('Error fetching token info from chain:', error);
+    throw new Error('Failed to fetch token info from blockchain');
+  }
 }
 
 export async function updateToken(address: string, data: {
@@ -30,9 +99,46 @@ export async function updateToken(address: string, data: {
   twitter?: string;
   youtube?: string;
 }) {
-  // Add update request to queue instead of direct update
-  await updateQueue.addToQueue(address, data);
-  return { message: 'Update queued successfully' };
+  try {
+    // First check if token exists
+    let token = await prisma.token.findUnique({
+      where: { address }
+    });
+
+    // If token doesn't exist, create it
+    if (!token) {
+      console.log(`Token ${address} not found in database. Fetching info from blockchain...`);
+      
+      try {
+        // Get token info from blockchain including creator address
+        const { name, symbol, creatorAddress } = await getTokenInfoFromChain(address);
+        
+        // Create the token with the actual creator address
+        token = await createToken({
+          address,
+          name: name as string,
+          symbol: symbol as string,
+          creatorAddress, // Use the actual creator address
+          ...data // Include the update data in creation
+        });
+
+        console.log(`Created new token: ${name} (${symbol}) by ${creatorAddress}`);
+        
+        // Return early as the token was created with the update data
+        return token;
+      } catch (error) {
+        console.error('Error creating token:', error);
+        throw new Error('Failed to create token');
+      }
+    }
+
+    // Add update request to queue
+    await updateQueue.addToQueue(address, data);
+    return { message: 'Update queued successfully' };
+  } catch (error) {
+    console.error('Error in updateToken:', error);
+    throw error;
+  }
 }
 
 export async function getTokenByAddress(address: string) {
@@ -202,7 +308,7 @@ export async function getTokenInfoAndTransactionsByAddress(
   transactionPage: number = 1,
   transactionPageSize: number = 20
 ) {
-  const token = await prisma.token.findUnique({
+  const tokenData = await prisma.token.findUnique({
     where: { address },
     include: {
       transactions: {
@@ -210,26 +316,28 @@ export async function getTokenInfoAndTransactionsByAddress(
         skip: (transactionPage - 1) * transactionPageSize,
         take: transactionPageSize,
       },
+      _count: {
+        select: { transactions: true }
+      }
     },
   });
 
-  if (!token) {
+  if (!tokenData) {
     return null;
   }
 
-  const transactionCount = await prisma.transaction.count({
-    where: { tokenId: token.id }
-  });
+  const { _count, ...tokenDataWithoutCount } = tokenData;
+
 
   return {
-    ...token,
+    ...tokenDataWithoutCount,
     transactions: {
-      data: token.transactions,
+      data: tokenData.transactions,
       pagination: {
         currentPage: transactionPage,
         pageSize: transactionPageSize,
-        totalCount: transactionCount,
-        totalPages: Math.ceil(transactionCount / transactionPageSize)
+        totalCount: tokenData._count.transactions,
+        totalPages: Math.ceil(tokenData._count.transactions / transactionPageSize)
       }
     }
   };

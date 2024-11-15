@@ -6,12 +6,14 @@ export async function createLiquidityEvent(data: {
   ethAmount: string;
   tokenAmount: string;
   txHash: string;
+  timestamp?: Date;
 }) {
   return prisma.liquidityEvent.create({
     data: {
       ...data,
       ethAmount: data.ethAmount.toString(),
-      tokenAmount: data.tokenAmount.toString()
+      tokenAmount: data.tokenAmount.toString(),
+      timestamp: data.timestamp || new Date()
     }
   });
 }

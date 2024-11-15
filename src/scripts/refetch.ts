@@ -1,7 +1,7 @@
 //to run this script, run the following command in the terminal:
 //npx ts-node scripts/refetch.ts
-import { createPublicClient, http, Address, ContractFunctionExecutionError } from 'viem';
-import { shibarium } from 'viem/chains';
+import { Address, ContractFunctionExecutionError } from 'viem';
+import { client } from '../blockchain/client';
 import { PrismaClient } from '@prisma/client';
 import { createTransaction } from '../services/transactionService';
 import { getTokenByAddress } from '../services/tokenService';
@@ -11,11 +11,6 @@ import { ABI } from '../blockchain/abi';
 const prisma = new PrismaClient();
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS as Address; //0x97b962Ab399beBF439a4a303d9754e79d6925EDa
-
-const client = createPublicClient({
-  chain: shibarium,
-  transport: http()
-});
 
 async function refetchEvents() {
   // Specify the block number you want to check/if we missed any events in the main loop
@@ -41,11 +36,18 @@ async function processTokenCreatedEvents(blockNumber: number) {
   });
 
   for (const log of createLogs) {
+    const block = await client.getBlock({
+      blockNumber: log.blockNumber
+    });
+    
+    const timestamp = new Date(Number(block.timestamp) * 1000);
+
     await handleTokenCreated({
       ...log.args,
       blockNumber: log.blockNumber,
       transactionHash: log.transactionHash,
-      contractAddress: CONTRACT_ADDRESS
+      contractAddress: CONTRACT_ADDRESS,
+      timestamp
     });
   }
 }
@@ -60,11 +62,18 @@ async function processTokensBoughtEvents(blockNumber: number) {
   });
 
   for (const log of buyLogs) {
+    const block = await client.getBlock({
+      blockNumber: log.blockNumber
+    });
+    
+    const timestamp = new Date(Number(block.timestamp) * 1000);
+
     await handleTokensBought({
       ...log.args,
       blockNumber: log.blockNumber,
       transactionHash: log.transactionHash,
-      contractAddress: CONTRACT_ADDRESS
+      contractAddress: CONTRACT_ADDRESS,
+      timestamp
     });
   }
 }
@@ -79,23 +88,31 @@ async function processTokensSoldEvents(blockNumber: number) {
   });
 
   for (const log of sellLogs) {
+    const block = await client.getBlock({
+      blockNumber: log.blockNumber
+    });
+    
+    const timestamp = new Date(Number(block.timestamp) * 1000);
+
     await handleTokensSold({
       ...log.args,
       blockNumber: log.blockNumber,
       transactionHash: log.transactionHash,
-      contractAddress: CONTRACT_ADDRESS
+      contractAddress: CONTRACT_ADDRESS,
+      timestamp
     });
   }
 }
 
 async function handleTokenCreated(data: any) {
-  const { tokenAddress, creator, name, symbol } = data;
+  const { tokenAddress, creator, name, symbol, timestamp } = data;
   try {
     const token = await createToken({
       address: tokenAddress,
       creatorAddress: creator,
       name,
-      symbol
+      symbol,
+      timestamp
     });
     console.log('Processed TokenCreated:', token);
   } catch (error) {
@@ -105,7 +122,7 @@ async function handleTokenCreated(data: any) {
 }
 
 async function handleTokensBought(data: any) {
-  const { token: tokenAddress, buyer, ethAmount, tokenAmount, blockNumber, transactionHash, contractAddress } = data;
+  const { token: tokenAddress, buyer, ethAmount, tokenAmount, blockNumber, transactionHash, contractAddress, timestamp } = data;
   try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
@@ -118,7 +135,8 @@ async function handleTokensBought(data: any) {
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
         tokenPrice: tokenPrice.toString(),
-        txHash: transactionHash
+        txHash: transactionHash,
+        timestamp
       });
       console.log('Processed TokensBought:', transaction);
     } else {
@@ -130,7 +148,7 @@ async function handleTokensBought(data: any) {
 }
 
 async function handleTokensSold(data: any) {
-  const { token: tokenAddress, seller, tokenAmount, ethAmount, blockNumber, transactionHash, contractAddress } = data;
+  const { token: tokenAddress, seller, tokenAmount, ethAmount, blockNumber, transactionHash, contractAddress, timestamp } = data;
   try {
     const token = await getTokenByAddress(tokenAddress);
     if (token) {
@@ -143,7 +161,8 @@ async function handleTokensSold(data: any) {
         ethAmount: ethAmount.toString(),
         tokenAmount: tokenAmount.toString(),
         tokenPrice: tokenPrice.toString(),
-        txHash: transactionHash
+        txHash: transactionHash,
+        timestamp
       });
       console.log('Processed TokensSold:', transaction);
     } else {

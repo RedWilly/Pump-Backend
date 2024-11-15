@@ -1,5 +1,6 @@
 // fileQueue.ts
-import fs from 'fs/promises';
+import fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -49,10 +50,10 @@ export class FileQueue {
   }
 
   private async ensureDirectories() {
-    await fs.mkdir(QUEUE_BASE_DIR, { recursive: true });
-    await fs.mkdir(QUEUE_DIR, { recursive: true });
-    await fs.mkdir(ERROR_DIR, { recursive: true });
-    await fs.mkdir(DLQ_DIR, { recursive: true });
+    await fsPromises.mkdir(QUEUE_BASE_DIR, { recursive: true });
+    await fsPromises.mkdir(QUEUE_DIR, { recursive: true });
+    await fsPromises.mkdir(ERROR_DIR, { recursive: true });
+    await fsPromises.mkdir(DLQ_DIR, { recursive: true });
   }
 
   // Custom replacer function for JSON.stringify
@@ -89,7 +90,7 @@ export class FileQueue {
   async enqueue(type: string, data: any): Promise<void> {
     const event: QueuedEvent = { id: uuidv4(), type, data, retries: 0 };
     const filePath = path.join(QUEUE_DIR, `${event.id}.json`);
-    await fs.writeFile(filePath, JSON.stringify(event, this.jsonReplacer));
+    await fsPromises.writeFile(filePath, JSON.stringify(event, this.jsonReplacer));
   }
 
   async processQueue(processEvent: (type: string, data: any) => Promise<void>): Promise<void> {
@@ -97,13 +98,13 @@ export class FileQueue {
     this.processing = true;
 
     try {
-      const files = await fs.readdir(QUEUE_DIR);
+      const files = await fsPromises.readdir(QUEUE_DIR);
       
       // Map files to their event types
       const fileEvents = await Promise.all(
         files.map(async (file) => {
           const filePath = path.join(QUEUE_DIR, file);
-          const content = await fs.readFile(filePath, 'utf-8');
+          const content = await fsPromises.readFile(filePath, 'utf-8');
           try {
             const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
             return { file, filePath, type: event.type };
@@ -122,14 +123,14 @@ export class FileQueue {
       });
 
       for (const { file, filePath, type } of fileEvents) {
-        const content = await fs.readFile(filePath, 'utf-8');
+        const content = await fsPromises.readFile(filePath, 'utf-8');
 
         console.log(`Processing file ${file}, type: ${type}, content:`, content); // Debug log
 
         try {
           const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
           await processEvent(event.type, event.data);
-          await fs.unlink(filePath);
+          await fsPromises.unlink(filePath);
           console.log(`Successfully processed and removed file ${file}`);
         } catch (error) {
           console.error(`Error processing file ${file}:`, error);
@@ -160,27 +161,27 @@ export class FileQueue {
     if (event.retries < MAX_RETRIES) {
       // Move to error queue for retry
       const errorPath = path.join(ERROR_DIR, path.basename(filePath));
-      await fs.writeFile(errorPath, JSON.stringify(event, this.jsonReplacer));
+      await fsPromises.writeFile(errorPath, JSON.stringify(event, this.jsonReplacer));
     } else {
       // Move to dead letter queue
       const dlqPath = path.join(DLQ_DIR, path.basename(filePath));
-      await fs.writeFile(dlqPath, JSON.stringify(event, this.jsonReplacer));
+      await fsPromises.writeFile(dlqPath, JSON.stringify(event, this.jsonReplacer));
       console.error(`Event ${event.id} exceeded max retries. Moved to dead letter queue.`);
     }
-    await fs.unlink(filePath);
+    await fsPromises.unlink(filePath);
   }
 
   private async processRetryQueue(processEvent: (type: string, data: any) => Promise<void>): Promise<void> {
-    const files = await fs.readdir(ERROR_DIR);
+    const files = await fsPromises.readdir(ERROR_DIR);
     for (const file of files) {
       const filePath = path.join(ERROR_DIR, file);
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fsPromises.readFile(filePath, 'utf-8');
       const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
 
       if (Date.now() - (event.lastAttempt || 0) > this.getRetryDelay(event.retries || 0)) {
         try {
           await processEvent(event.type, event.data);
-          await fs.unlink(filePath);
+          await fsPromises.unlink(filePath);
           console.log(`Successfully retried and processed event ${event.id}`);
         } catch (error) {
           console.error(`Error retrying event ${event.id}:`, error);
@@ -201,14 +202,14 @@ export class FileQueue {
   private async performIntegrityCheck(): Promise<void> {
     console.log('Performing integrity check...');
     try {
-      const queueFiles = await fs.readdir(QUEUE_DIR);
-      const errorFiles = await fs.readdir(ERROR_DIR);
-      const dlqFiles = await fs.readdir(DLQ_DIR);
+      const queueFiles = await fsPromises.readdir(QUEUE_DIR);
+      const errorFiles = await fsPromises.readdir(ERROR_DIR);
+      const dlqFiles = await fsPromises.readdir(DLQ_DIR);
 
       // Check for stuck events in the main queue
       for (const file of queueFiles) {
         const filePath = path.join(QUEUE_DIR, file);
-        const stats = await fs.stat(filePath);
+        const stats = await fsPromises.stat(filePath);
         const ageInMs = Date.now() - stats.birthtimeMs;
         
         if (ageInMs > STUCK_EVENT_THRESHOLD) {
@@ -220,7 +221,7 @@ export class FileQueue {
       // Check for events in error queue that haven't been retried
       for (const file of errorFiles) {
         const filePath = path.join(ERROR_DIR, file);
-        const content = await fs.readFile(filePath, 'utf-8');
+        const content = await fsPromises.readFile(filePath, 'utf-8');
         const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
         
         if (!event.lastAttempt || Date.now() - event.lastAttempt > 30 * 60 * 1000) { // 30 minutes
@@ -239,7 +240,7 @@ export class FileQueue {
 
   private async handleStuckEvent(filePath: string): Promise<void> {
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fsPromises.readFile(filePath, 'utf-8');
       const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
 
       // Increment retry count
@@ -249,16 +250,16 @@ export class FileQueue {
       if (event.retries < MAX_RETRIES) {
         // Move to error queue for retry
         const errorPath = path.join(ERROR_DIR, path.basename(filePath));
-        await fs.writeFile(errorPath, JSON.stringify(event, this.jsonReplacer));
+        await fsPromises.writeFile(errorPath, JSON.stringify(event, this.jsonReplacer));
         console.log(`Moved stuck event ${event.id} to error queue for retry.`);
       } else {
         // Move to dead letter queue
         const dlqPath = path.join(DLQ_DIR, path.basename(filePath));
-        await fs.writeFile(dlqPath, JSON.stringify(event, this.jsonReplacer));
+        await fsPromises.writeFile(dlqPath, JSON.stringify(event, this.jsonReplacer));
         console.error(`Event ${event.id} exceeded max retries. Moved to dead letter queue.`);
       }
 
-      await fs.unlink(filePath);
+      await fsPromises.unlink(filePath);
     } catch (error) {
       console.error(`Error handling stuck event ${path.basename(filePath)}:`, error);
     }
@@ -266,11 +267,11 @@ export class FileQueue {
 
   // Dead Letter Queue Operations
   async listDeadLetterQueue(): Promise<QueuedEvent[]> {
-    const files = await fs.readdir(DLQ_DIR);
+    const files = await fsPromises.readdir(DLQ_DIR);
     const events: QueuedEvent[] = [];
     for (const file of files) {
       const filePath = path.join(DLQ_DIR, file);
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fsPromises.readFile(filePath, 'utf-8');
       events.push(JSON.parse(content, this.jsonReviver));
     }
     return events;
@@ -279,7 +280,7 @@ export class FileQueue {
   async reprocessDeadLetterQueueItem(id: string): Promise<boolean> {
     const filePath = path.join(DLQ_DIR, `${id}.json`);
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fsPromises.readFile(filePath, 'utf-8');
       const event: QueuedEvent = JSON.parse(content, this.jsonReviver);
       
       // Reset retry count and move back to main queue
@@ -288,7 +289,7 @@ export class FileQueue {
       await this.enqueue(event.type, event.data);
       
       // Remove from DLQ
-      await fs.unlink(filePath);
+      await fsPromises.unlink(filePath);
       return true;
     } catch (error) {
       console.error(`Error reprocessing DLQ item ${id}:`, error);
@@ -299,7 +300,7 @@ export class FileQueue {
   async deleteDeadLetterQueueItem(id: string): Promise<boolean> {
     const filePath = path.join(DLQ_DIR, `${id}.json`);
     try {
-      await fs.unlink(filePath);
+      await fsPromises.unlink(filePath);
       return true;
     } catch (error) {
       console.error(`Error deleting DLQ item ${id}:`, error);
@@ -310,9 +311,9 @@ export class FileQueue {
   // Utility method to get queue statistics
   async getQueueStats(): Promise<{ main: number, error: number, dlq: number }> {
     const [mainFiles, errorFiles, dlqFiles] = await Promise.all([
-      fs.readdir(QUEUE_DIR),
-      fs.readdir(ERROR_DIR),
-      fs.readdir(DLQ_DIR)
+      fsPromises.readdir(QUEUE_DIR),
+      fsPromises.readdir(ERROR_DIR),
+      fsPromises.readdir(DLQ_DIR)
     ]);
 
     return {
@@ -325,6 +326,33 @@ export class FileQueue {
   // Manual trigger for integrity check
   async runManualIntegrityCheck(): Promise<void> {
     await this.performIntegrityCheck();
+  }
+
+  async addToDeadLetterQueue(type: string, data: any): Promise<void> {
+    const dlqPath = path.join(DLQ_DIR, `${data.transactionHash || uuidv4()}.json`);
+    await fsPromises.writeFile(dlqPath, JSON.stringify({ type, data, timestamp: new Date() }));
+  }
+
+  getQueueSize(): number {
+    try {
+      return fs.readdirSync(QUEUE_DIR).length;
+    } catch (error) {
+      console.error('Error getting queue size:', error);
+      return 0;
+    }
+  }
+
+  isProcessing(): boolean {
+    return this.processing;
+  }
+
+  getErrorCount(): number {
+    try {
+      return fs.readdirSync(ERROR_DIR).length;
+    } catch (error) {
+      console.error('Error getting error count:', error);
+      return 0;
+    }
   }
 }
 

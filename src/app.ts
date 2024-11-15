@@ -13,6 +13,8 @@ import './telegramBot';
 import bodyParser from 'body-parser';
 import db from './db';
 import { updateQueue } from './blockchain/updateQueue';
+import { BlockScanner } from './blockchain/blockScanner';
+import { getEventProcessingStatus } from './blockchain/events';
 
 const app = express();
 const server = http.createServer(app);
@@ -47,6 +49,8 @@ const PORT = 9007;
 
 let serverStarted = false; // Define serverStarted
 
+const blockScanner = new BlockScanner();
+
 async function startServer() {
   if (serverStarted) {
     return;
@@ -56,6 +60,7 @@ async function startServer() {
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     setupBlockchainListeners();
+    blockScanner.start(); // Start the block scanner
   });
 }
 
@@ -163,4 +168,14 @@ app.get('/chats', (req, res) => {
 app.get('/api/update-queue/status', (req, res) => {
   const status = updateQueue.getQueueStatus();
   res.json(status);
+});
+
+app.get('/api/events/status', async (req, res) => {
+  try {
+    const status = await getEventProcessingStatus();
+    res.json(status);
+  } catch (error) {
+    console.error('Error getting event processing status:', error);
+    res.status(500).json({ error: 'Failed to get event processing status' });
+  }
 });
