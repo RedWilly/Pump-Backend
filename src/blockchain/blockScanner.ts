@@ -6,10 +6,11 @@ import { prisma } from '../app';
 
 const CONTRACT_ADDRESSES = [
   '0x97b962Ab399beBF439a4a303d9754e79d6925EDa',
-  '0x9272ddC213739Dad3B499C2C1245ff4A2cDe313A'
+  '0x9272ddC213739Dad3B499C2C1245ff4A2cDe313A',
+  '0xc4d1a89d5BCC5A13c59fe2f3820E20B4f5d3095e'
 ];
 
-const BLOCKS_TO_SCAN = 600;
+const BLOCKS_TO_SCAN = 1000;
 const CHUNK_SIZE = 100; // Size of each chunk when splitting
 const SCAN_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
