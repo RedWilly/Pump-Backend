@@ -4,13 +4,15 @@ import { prisma, broadcastUpdate } from '../app';
 import { createToken, getTokenByAddress } from '../services/tokenService';
 import { createTransaction } from '../services/transactionService';
 import { createLiquidityEvent } from '../services/liquidityService';
+import { trackVolume } from '../services/volumeService';
 import { ABI, TOKEN_CREATED_EVENT, TOKENS_BOUGHT_EVENT, TOKENS_SOLD_EVENT, LIQUIDITY_ADDED_EVENT } from './abi';
 import { fileQueue } from './fileQueue';
 import { sendTokenCreatedNotification, sendTokenBuyNotification, sendTokenSellNotification, sendLiquidityAddedNotification } from '../telegramBot';
 
 const CONTRACT_ADDRESSES = [
   '0x97b962Ab399beBF439a4a303d9754e79d6925EDa',
-  '0x9272ddC213739Dad3B499C2C1245ff4A2cDe313A'
+  '0x9272ddC213739Dad3B499C2C1245ff4A2cDe313A',
+  '0xc4d1a89d5BCC5A13c59fe2f3820E20B4f5d3095e'
 ];
 
 // Add shared event type definitions
@@ -28,8 +30,6 @@ export interface TokenCreatedData extends BaseEventData {
   name: string;
   symbol: string;
 }
-
-// Add similar interfaces for other event types
 
 // Add event tracking
 const processedBlocks = new Set<string>();
@@ -241,6 +241,8 @@ async function handleTokensBought(data: any) {
       } catch (telegramError) {
         console.error('Error sending Telegram notification for token buy:', telegramError);
       }
+
+      await trackVolume(parseFloat(ethAmount.toString()), 'BUY');
     }
   } catch (error) {
     console.error('Error handling tokens bought:', error);
@@ -287,6 +289,8 @@ async function handleTokensSold(data: any) {
       } catch (telegramError) {
         console.error('Error sending Telegram notification for token sell:', telegramError);
       }
+
+      await trackVolume(parseFloat(ethAmount.toString()), 'SELL');
     }
   } catch (error) {
     console.error('Error handling tokens sold:', error);

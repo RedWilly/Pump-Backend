@@ -549,23 +549,9 @@ export async function getListedTokens() {
 }
  
 //just tokens recently traded
-export const getTrendingTokens = async (page: number = 1, pageSize: number = 20) => {
+export const getTrendingTokens = async () => {
   try {
-    const skip = (page - 1) * pageSize;
-
-    // First, get the total count
-    const totalCount = await prisma.token.count({
-      where: {
-        liquidityEvents: {
-          none: {}
-        },
-        transactions: {
-          some: {} // Only count tokens that have at least one transaction
-        }
-      }
-    });
-
-    // Get the latest transaction for each token that has no liquidity events
+    // Get all tokens with transactions but no liquidity events
     const latestTransactions = await prisma.transaction.groupBy({
       by: ['tokenId'],
       _max: {
@@ -582,12 +568,10 @@ export const getTrendingTokens = async (page: number = 1, pageSize: number = 20)
         _max: {
           timestamp: 'desc'
         }
-      },
-      skip,
-      take: pageSize
+      }
     });
 
-    // Then get the full token details for these tokens
+    // Get full token details
     const tokenIds = latestTransactions.map(t => t.tokenId);
     const tokens = await prisma.token.findMany({
       where: {
@@ -613,9 +597,9 @@ export const getTrendingTokens = async (page: number = 1, pageSize: number = 20)
       .map(token => ({
         ...token,
         latestTransactionTimestamp: token.transactions[0]?.timestamp,
-        transactions: undefined, // Remove the transactions array from response
+        transactions: undefined,
         _count: {
-          liquidityEvents: 0 // Add the _count field with liquidityEvents set to 0
+          liquidityEvents: 0
         }
       }))
       .sort((a, b) => {
@@ -624,12 +608,7 @@ export const getTrendingTokens = async (page: number = 1, pageSize: number = 20)
         return b.latestTransactionTimestamp.getTime() - a.latestTransactionTimestamp.getTime();
       });
 
-    return {
-      tokens: formattedTokens,
-      currentPage: page,
-      totalPages: Math.ceil(totalCount / pageSize),
-      totalCount
-    };
+    return formattedTokens;
   } catch (error) {
     console.error('Error getting trending tokens:', error);
     throw new Error('Failed to get trending tokens');

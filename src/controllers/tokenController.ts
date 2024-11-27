@@ -207,11 +207,13 @@ export async function getListedTokens(req: Request, res: Response) {
 
 export const getTrendingTokens = async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const trendingTokens = await tokenService.getTrendingTokens();
     
-    const result = await tokenService.getTrendingTokens(page, pageSize);
-    res.json(result);
+    if (trendingTokens.length > 0) {
+      res.json(trendingTokens);
+    } else {
+      res.status(404).json({ message: "No trending tokens found" });
+    }
   } catch (error) {
     console.error('Error getting trending tokens:', error);
     res.status(500).json({ error: 'Failed to get trending tokens' });

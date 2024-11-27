@@ -15,6 +15,8 @@ import db from './db';
 import { updateQueue } from './blockchain/updateQueue';
 import { BlockScanner } from './blockchain/blockScanner';
 import { getEventProcessingStatus } from './blockchain/events';
+import volumeRoutes from './routes/volumeRoutes';
+
 
 const app = express();
 const server = http.createServer(app);
@@ -31,6 +33,8 @@ app.use('/api/tokens', tokenRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/liquidity', liquidityRoutes);
 app.use('/api/price', priceRoutes);
+app.use('/api/volume', volumeRoutes);
+
 
 wss.on('connection', (ws) => {
   console.log('New WebSocket connection');
