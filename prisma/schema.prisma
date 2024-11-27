@@ -60,3 +60,16 @@ model Transaction {
   @@index([tokenId, type, timestamp])
   @@index([txHash])
 }
+
+model PlatformVolume {
+  id        String   @id @default(uuid())
+  volume    Float    @default(0)
+  timestamp DateTime @default(now())
+  type      String   // "BUY" or "SELL"
+}
+
+model TotalVolume {
+  id          String   @id @default(uuid())
+  totalVolume Float    @default(0)
+  updatedAt   DateTime @updatedAt
+}
