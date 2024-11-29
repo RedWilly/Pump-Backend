@@ -16,6 +16,8 @@ import { updateQueue } from './blockchain/updateQueue';
 import { BlockScanner } from './blockchain/blockScanner';
 import { getEventProcessingStatus } from './blockchain/events';
 import volumeRoutes from './routes/volumeRoutes';
+import { generateSitemap, serveSitemapFile } from './controllers/sitemapController';
+import path from 'path';
 
 
 const app = express();
@@ -28,6 +30,10 @@ app.use(cors());
 app.use(express.json());
 app.use(cors());
 app.use(bodyParser.json());
+
+app.get('/sitemap.xml', generateSitemap);
+app.get('/sitemaps/:filename', serveSitemapFile);
+app.use('/sitemaps', express.static(path.join(__dirname, '../public/sitemaps')));
 
 app.use('/api/tokens', tokenRoutes);
 app.use('/api/transactions', transactionRoutes);
