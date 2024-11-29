@@ -34,3 +34,7 @@ prisma/migrations/
 .DS_Store
 *.pem
 .cache
+
+# Sitemap files
+public/sitemaps/
+public/sitemaps/*

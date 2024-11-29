@@ -1,5 +1,6 @@
 import express from 'express';
 import * as tokenController from '../controllers/tokenController';
+import { generateSitemap } from '../controllers/sitemapController';
 
 const router = express.Router();
 
@@ -8,6 +9,7 @@ const router = express.Router();
  */
 
 // Static Routes
+router.get('/sitemap.xml', generateSitemap);
 router.get('/search', tokenController.searchTokens);
 router.get('/addresses', tokenController.getAllTokenAddresses);
 router.get('/listed', tokenController.getListedTokens);
