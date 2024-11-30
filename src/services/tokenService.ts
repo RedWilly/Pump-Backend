@@ -24,16 +24,22 @@ export async function createToken(data: {
 
   if (existingToken) {
     // If token exists, only update the blockchain-specific fields
-    // while preserving any social info
+    // while preserving any existing social info
     return prisma.token.update({
       where: { address: data.address },
       data: {
         name: data.name,
         symbol: data.symbol,
         creatorAddress: data.creatorAddress,
-        // Don't update logo, description, or social fields if they exist
+        // Preserve existing social info if it exists
         logo: existingToken.logo || data.logo || '',
         description: existingToken.description || data.description || '',
+        // Keep existing social links
+        website: existingToken.website,
+        telegram: existingToken.telegram,
+        discord: existingToken.discord,
+        twitter: existingToken.twitter,
+        youtube: existingToken.youtube
       }
     });
   }
@@ -141,7 +147,6 @@ export async function updateToken(address: string, data: {
 
     if (!token) {
       console.log(`Token ${address} not found in database. Creating new entry...`);
-      
       try {
         // Create a basic token entry with required fields and default values
         token = await prisma.token.create({
@@ -150,8 +155,8 @@ export async function updateToken(address: string, data: {
             name: "Unknown", // Temporary name
             symbol: "Unknown", // Temporary symbol
             creatorAddress: "0x0000000000000000000000000000000000000000", // Temporary creator
-            logo: data.logo || '', // Default empty string for required field
-            description: data.description || '', // Default empty string for required field
+            logo: data.logo || '', 
+            description: data.description || '',
             website: data.website || null,
             telegram: data.telegram || null,
             discord: data.discord || null,
@@ -163,15 +168,30 @@ export async function updateToken(address: string, data: {
         // Try to fetch blockchain data asynchronously
         getTokenInfoFromChain(address)
           .then(async (chainInfo) => {
-            // Update with blockchain data if available
-            await prisma.token.update({
-              where: { address },
-              data: {
-                name: chainInfo.name,
-                symbol: chainInfo.symbol,
-                creatorAddress: chainInfo.creatorAddress
-              }
+            // Get the latest token data to ensure we don't override any updates
+            const currentToken = await prisma.token.findUnique({
+              where: { address }
             });
+
+            if (currentToken) {
+              // Update only blockchain data while preserving the latest social info
+              await prisma.token.update({
+                where: { address },
+                data: {
+                  name: chainInfo.name,
+                  symbol: chainInfo.symbol,
+                  creatorAddress: chainInfo.creatorAddress,
+                  // Preserve the most recent social info
+                  logo: currentToken.logo,
+                  description: currentToken.description,
+                  website: currentToken.website,
+                  telegram: currentToken.telegram,
+                  discord: currentToken.discord,
+                  twitter: currentToken.twitter,
+                  youtube: currentToken.youtube
+                }
+              });
+            }
           })
           .catch(error => {
             console.warn(`Failed to fetch chain info for ${address}:`, error);
@@ -184,7 +204,7 @@ export async function updateToken(address: string, data: {
       }
     }
 
-    // If token exists or was just created, queue the update
+    // If token exists, queue the update
     await updateQueue.addToQueue(address, data);
     return { message: 'Update queued successfully' };
   } catch (error) {
