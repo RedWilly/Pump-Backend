@@ -17,6 +17,28 @@ export async function createToken(data: {
 }) {
   const { timestamp, ...tokenData } = data;
   
+  // Check if token already exists
+  const existingToken = await prisma.token.findUnique({
+    where: { address: data.address }
+  });
+
+  if (existingToken) {
+    // If token exists, only update the blockchain-specific fields
+    // while preserving any social info
+    return prisma.token.update({
+      where: { address: data.address },
+      data: {
+        name: data.name,
+        symbol: data.symbol,
+        creatorAddress: data.creatorAddress,
+        // Don't update logo, description, or social fields if they exist
+        logo: existingToken.logo || data.logo || '',
+        description: existingToken.description || data.description || '',
+      }
+    });
+  }
+
+  // If token doesn't exist, create it normally
   return prisma.token.create({
     data: {
       ...tokenData,
@@ -29,9 +51,21 @@ export async function createToken(data: {
 
 async function getTokenInfoFromChain(address: string) {
   const tokenAbi = [
-    'function name() view returns (string)',
-    'function symbol() view returns (string)'
-  ];
+    {
+      type: 'function',
+      name: 'name',
+      stateMutability: 'view',
+      inputs: [],
+      outputs: [{ type: 'string' }]
+    },
+    {
+      type: 'function',
+      name: 'symbol',
+      stateMutability: 'view',
+      inputs: [],
+      outputs: [{ type: 'string' }]
+    }
+  ] as const;
 
   try {
     // Get token info
@@ -105,26 +139,44 @@ export async function updateToken(address: string, data: {
       where: { address }
     });
 
-    // If token doesn't exist, create it
     if (!token) {
-      console.log(`Token ${address} not found in database. Fetching info from blockchain...`);
+      console.log(`Token ${address} not found in database. Creating new entry...`);
       
       try {
-        // Get token info from blockchain including creator address
-        const { name, symbol, creatorAddress } = await getTokenInfoFromChain(address);
-        
-        // Create the token with the actual creator address
-        token = await createToken({
-          address,
-          name: name as string,
-          symbol: symbol as string,
-          creatorAddress, // Use the actual creator address
-          ...data // Include the update data in creation
+        // Create a basic token entry with required fields and default values
+        token = await prisma.token.create({
+          data: {
+            address,
+            name: "Unknown", // Temporary name
+            symbol: "Unknown", // Temporary symbol
+            creatorAddress: "0x0000000000000000000000000000000000000000", // Temporary creator
+            logo: data.logo || '', // Default empty string for required field
+            description: data.description || '', // Default empty string for required field
+            website: data.website || null,
+            telegram: data.telegram || null,
+            discord: data.discord || null,
+            twitter: data.twitter || null,
+            youtube: data.youtube || null
+          }
         });
 
-        console.log(`Created new token: ${name} (${symbol}) by ${creatorAddress}`);
-        
-        // Return early as the token was created with the update data
+        // Try to fetch blockchain data asynchronously
+        getTokenInfoFromChain(address)
+          .then(async (chainInfo) => {
+            // Update with blockchain data if available
+            await prisma.token.update({
+              where: { address },
+              data: {
+                name: chainInfo.name,
+                symbol: chainInfo.symbol,
+                creatorAddress: chainInfo.creatorAddress
+              }
+            });
+          })
+          .catch(error => {
+            console.warn(`Failed to fetch chain info for ${address}:`, error);
+          });
+
         return token;
       } catch (error) {
         console.error('Error creating token:', error);
@@ -132,7 +184,7 @@ export async function updateToken(address: string, data: {
       }
     }
 
-    // Add update request to queue
+    // If token exists or was just created, queue the update
     await updateQueue.addToQueue(address, data);
     return { message: 'Update queued successfully' };
   } catch (error) {

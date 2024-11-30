@@ -12,7 +12,7 @@ const CONTRACT_ADDRESSES = [
 
 const BLOCKS_TO_SCAN = 1000;
 const CHUNK_SIZE = 100; // Size of each chunk when splitting
-const SCAN_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const SCAN_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
 export class BlockScanner {
   private lastScannedBlock: bigint = BigInt(0);
