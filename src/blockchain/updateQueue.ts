@@ -19,7 +19,7 @@ interface TokenUpdateData {
 
 class UpdateQueue {
   private queue: Map<string, TokenUpdateData> = new Map();
-  private readonly MAX_ATTEMPTS = 5;
+  private readonly MAX_ATTEMPTS = 105;
   private readonly RETRY_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
   private readonly QUEUE_FILE_PATH = path.join(__dirname, '../data/updateQueue.json');
 

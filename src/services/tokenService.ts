@@ -17,6 +17,34 @@ export async function createToken(data: {
 }) {
   const { timestamp, ...tokenData } = data;
   
+  // Check if token already exists
+  const existingToken = await prisma.token.findUnique({
+    where: { address: data.address }
+  });
+
+  if (existingToken) {
+    // If token exists, only update the blockchain-specific fields
+    // while preserving any existing social info
+    return prisma.token.update({
+      where: { address: data.address },
+      data: {
+        name: data.name,
+        symbol: data.symbol,
+        creatorAddress: data.creatorAddress,
+        // Preserve existing social info if it exists
+        logo: existingToken.logo || data.logo || '',
+        description: existingToken.description || data.description || '',
+        // Keep existing social links
+        website: existingToken.website,
+        telegram: existingToken.telegram,
+        discord: existingToken.discord,
+        twitter: existingToken.twitter,
+        youtube: existingToken.youtube
+      }
+    });
+  }
+
+  // If token doesn't exist, create it normally
   return prisma.token.create({
     data: {
       ...tokenData,
@@ -29,9 +57,21 @@ export async function createToken(data: {
 
 async function getTokenInfoFromChain(address: string) {
   const tokenAbi = [
-    'function name() view returns (string)',
-    'function symbol() view returns (string)'
-  ];
+    {
+      type: 'function',
+      name: 'name',
+      stateMutability: 'view',
+      inputs: [],
+      outputs: [{ type: 'string' }]
+    },
+    {
+      type: 'function',
+      name: 'symbol',
+      stateMutability: 'view',
+      inputs: [],
+      outputs: [{ type: 'string' }]
+    }
+  ] as const;
 
   try {
     // Get token info
@@ -105,26 +145,58 @@ export async function updateToken(address: string, data: {
       where: { address }
     });
 
-    // If token doesn't exist, create it
     if (!token) {
-      console.log(`Token ${address} not found in database. Fetching info from blockchain...`);
-      
+      console.log(`Token ${address} not found in database. Creating new entry...`);
       try {
-        // Get token info from blockchain including creator address
-        const { name, symbol, creatorAddress } = await getTokenInfoFromChain(address);
-        
-        // Create the token with the actual creator address
-        token = await createToken({
-          address,
-          name: name as string,
-          symbol: symbol as string,
-          creatorAddress, // Use the actual creator address
-          ...data // Include the update data in creation
+        // Create a basic token entry with required fields and default values
+        token = await prisma.token.create({
+          data: {
+            address,
+            name: "Unknown", // Temporary name
+            symbol: "Unknown", // Temporary symbol
+            creatorAddress: "0x0000000000000000000000000000000000000000", // Temporary creator
+            logo: data.logo || '', 
+            description: data.description || '',
+            website: data.website || null,
+            telegram: data.telegram || null,
+            discord: data.discord || null,
+            twitter: data.twitter || null,
+            youtube: data.youtube || null
+          }
         });
 
-        console.log(`Created new token: ${name} (${symbol}) by ${creatorAddress}`);
-        
-        // Return early as the token was created with the update data
+        // Try to fetch blockchain data asynchronously
+        getTokenInfoFromChain(address)
+          .then(async (chainInfo) => {
+            // Get the latest token data to ensure we don't override any updates
+            const currentToken = await prisma.token.findUnique({
+              where: { address }
+            });
+
+            if (currentToken) {
+              // Update only blockchain data while preserving the latest social info
+              await prisma.token.update({
+                where: { address },
+                data: {
+                  name: chainInfo.name,
+                  symbol: chainInfo.symbol,
+                  creatorAddress: chainInfo.creatorAddress,
+                  // Preserve the most recent social info
+                  logo: currentToken.logo,
+                  description: currentToken.description,
+                  website: currentToken.website,
+                  telegram: currentToken.telegram,
+                  discord: currentToken.discord,
+                  twitter: currentToken.twitter,
+                  youtube: currentToken.youtube
+                }
+              });
+            }
+          })
+          .catch(error => {
+            console.warn(`Failed to fetch chain info for ${address}:`, error);
+          });
+
         return token;
       } catch (error) {
         console.error('Error creating token:', error);
@@ -132,7 +204,7 @@ export async function updateToken(address: string, data: {
       }
     }
 
-    // Add update request to queue
+    // If token exists, queue the update
     await updateQueue.addToQueue(address, data);
     return { message: 'Update queued successfully' };
   } catch (error) {
