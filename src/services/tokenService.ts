@@ -567,6 +567,11 @@ export async function getTokensByCreator(creatorAddress: string, page: number = 
         logo: true,
         description: true,
         creatorAddress: true,
+        website: true,
+        telegram: true,
+        discord: true,
+        twitter: true,
+        youtube: true,
       },
       orderBy: {
         createdAt: 'desc'
