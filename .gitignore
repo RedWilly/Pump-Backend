@@ -30,6 +30,9 @@ build/
 prisma/*.db
 prisma/migrations/
 
+# Database files
+chat.sqlite
+
 # Misc
 .DS_Store
 *.pem
