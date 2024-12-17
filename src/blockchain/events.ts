@@ -1,5 +1,5 @@
 import { Address, ContractFunctionExecutionError } from 'viem';
-import { client } from './client';
+import { client, chainId } from './client';
 import { prisma, broadcastUpdate } from '../app';
 import { createToken, getTokenByAddress } from '../services/tokenService';
 import { createTransaction } from '../services/transactionService';
@@ -167,7 +167,8 @@ async function handleTokenCreated(data: any) {
       creatorAddress: creator,
       name,
       symbol,
-      timestamp
+      timestamp,
+      chainId
     });
 
     // Prepare broadcast data
@@ -179,6 +180,7 @@ async function handleTokenCreated(data: any) {
       name: token.name,
       symbol: token.symbol,
       logo: token.logo || '',
+      chainId: token.chainId
     };
 
     broadcastUpdate('tokenCreated', broadcastData);

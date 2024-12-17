@@ -5,7 +5,12 @@ import { updateQueue } from '../blockchain/updateQueue';
 import { client } from '../blockchain/client';
 import { Address } from 'viem';
 
-
+/**
+ * Creates a new token or updates an existing one.
+ * 
+ * @param data Token data to create or update.
+ * @returns The created or updated token.
+ */
 export async function createToken(data: {
   address: string;
   creatorAddress: string;
@@ -14,6 +19,7 @@ export async function createToken(data: {
   logo?: string;
   description?: string;
   timestamp?: Date;
+  chainId: number;
 }) {
   const { timestamp, ...tokenData } = data;
   
@@ -30,6 +36,7 @@ export async function createToken(data: {
       data: {
         name: data.name,
         symbol: data.symbol,
+        chainId: data.chainId,
         creatorAddress: data.creatorAddress,
         // Preserve existing social info if it exists
         logo: existingToken.logo || data.logo || '',
@@ -48,6 +55,7 @@ export async function createToken(data: {
   return prisma.token.create({
     data: {
       ...tokenData,
+      chainId: data.chainId,
       logo: data.logo || '',
       description: data.description || '',
       createdAt: timestamp || new Date()
@@ -222,6 +230,7 @@ export async function getTokenByAddress(address: string) {
       name: true,
       symbol: true,
       logo: true,
+      chainId: true,
       description: true,
     }
   });
@@ -245,6 +254,7 @@ export async function getAllTokens(page: number, pageSize: number) {
         address: true,
         creatorAddress: true,
         name: true,
+        chainId: true,
         symbol: true,
         logo: true,
         description: true,
@@ -297,6 +307,7 @@ export async function getRecentTokens(page: number = 1, pageSize: number = 20, h
         id: true,
         address: true,
         creatorAddress: true,
+        chainId: true,
         name: true,
         symbol: true,
         logo: true,
@@ -493,7 +504,8 @@ export async function getAllTokenAddresses() {
     select: {
       address: true,
       name: true,
-      symbol: true
+      symbol: true,
+      chainId: true
     }
   });
 }
@@ -519,6 +531,7 @@ export async function searchTokens(query: string, page: number = 1, pageSize: nu
         id: true,
         address: true,
         name: true,
+        chainId: true,
         symbol: true,
         logo: true,
         description: true,
@@ -564,14 +577,10 @@ export async function getTokensByCreator(creatorAddress: string, page: number = 
         address: true,
         name: true,
         symbol: true,
+        chainId: true,
         logo: true,
         description: true,
         creatorAddress: true,
-        website: true,
-        telegram: true,
-        discord: true,
-        twitter: true,
-        youtube: true,
       },
       orderBy: {
         createdAt: 'desc'
@@ -606,7 +615,8 @@ export async function getListedTokens() {
         name: true,
         symbol: true,
         logo: true,
-        address: true
+        address: true,
+        chainId: true
       },
       orderBy: {
         createdAt: 'desc'
