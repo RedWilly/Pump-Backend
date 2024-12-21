@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import http from 'http';
 import WebSocket from 'ws';
 import cors from 'cors';
@@ -41,16 +41,15 @@ const corsOptions = {
   origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
     console.log('Incoming request from origin:', origin);
 
-    // Allow undefined origin only in development
-    if (!origin && process.env.NODE_ENV === 'development') {
-        callback(null, true);
-        return;
-    }
-    
-    if (!origin) {
-         callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
-        return;
-     }
+      if (!origin && process.env.NODE_ENV === 'development') {
+          callback(null, true);
+          return;
+      }
+      
+      if (!origin) {
+          callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
+          return;
+       }
     
       const isAllowed = allowedOrigins.some(allowedOrigin => {
           if (allowedOrigin.includes('*')){
@@ -238,4 +237,19 @@ app.get('/api/events/status', async (req, res) => {
     console.error('Error getting event processing status:', error);
     res.status(500).json({ error: 'Failed to get event processing status' });
   }
+});
+
+// Error handling middleware (must be defined after all routes)
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  if (err.message && err.message.startsWith('CORS error:')) {
+    console.log(err.message);
+    res.status(403).json({ error: 'Not allowed by CORS' });
+    return;
+  }
+
+  // Handle other errors here if needed
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
+  
+  next(err);
 });
