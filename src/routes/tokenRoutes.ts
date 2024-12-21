@@ -1,6 +1,7 @@
 import express from 'express';
 import * as tokenController from '../controllers/tokenController';
 import { generateSitemap } from '../controllers/sitemapController';
+import cors from 'cors';
 
 const router = express.Router();
 
