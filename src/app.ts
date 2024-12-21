@@ -40,13 +40,17 @@ if (process.env.NODE_ENV === 'development') {
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
     console.log('Incoming request from origin:', origin);
-    console.log('Allowed origins:', allowedOrigins);
 
-    if (!origin) {
-      console.log('Allowing server-side request');
-      callback(null, true);
-      return;
+    // Allow undefined origin only in development
+    if (!origin && process.env.NODE_ENV === 'development') {
+        callback(null, true);
+        return;
     }
+    
+    if (!origin) {
+         callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
+        return;
+     }
     
       const isAllowed = allowedOrigins.some(allowedOrigin => {
           if (allowedOrigin.includes('*')){
@@ -57,12 +61,10 @@ const corsOptions = {
         });
 
     if (!isAllowed) {
-      console.log('Origin not allowed:', origin);
       callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
       return;
     }
 
-    console.log('Origin allowed:', origin);
     callback(null, true);
   },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
