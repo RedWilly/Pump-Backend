@@ -28,6 +28,7 @@ model Token {
   symbol          String
   logo            String
   description     String
+  chainId         Int              @default(109)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   website         String?
@@ -42,6 +43,7 @@ model Token {
   @@index([address, createdAt])
   @@index([createdAt])
   @@index([name, symbol])
+  @@index([chainId])
 }
 
 model Transaction {

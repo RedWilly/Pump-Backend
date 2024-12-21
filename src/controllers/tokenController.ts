@@ -219,3 +219,18 @@ export const getTrendingTokens = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to get trending tokens' });
   }
 };
+
+export async function getTokensWithoutLiquidity(req: Request, res: Response) {
+  try {
+    const tokens = await tokenService.getTokensWithoutLiquidityEvents();
+    
+    if (tokens.length > 0) {
+      res.json({ tokens });
+    } else {
+      res.status(404).json({ message: "No tokens without liquidity found" });
+    }
+  } catch (error) {
+    console.error('Error fetching tokens without liquidity:', error);
+    res.status(500).json({ error: 'Failed to fetch tokens without liquidity' });
+  }
+}

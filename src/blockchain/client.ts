@@ -6,3 +6,5 @@ export const client = createPublicClient({
   chain: shibarium,
   transport: http()
 }); 
+
+export const chainId = shibarium.id;
