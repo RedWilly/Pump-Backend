@@ -701,3 +701,21 @@ export const getTrendingTokens = async () => {
     throw new Error('Failed to get trending tokens');
   }
 };
+
+export async function getTokensWithoutLiquidityEvents() {
+  const tokens = await prisma.token.findMany({
+    where: {
+      liquidityEvents: {
+        none: {}
+      }
+    },
+    select: {
+      address: true
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+
+  return tokens.map(token => token.address);
+}
