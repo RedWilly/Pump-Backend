@@ -36,12 +36,14 @@ if (process.env.NODE_ENV === 'development') {
     allowedOrigins.push('http://localhost:3001');
 }
 
-// Restricted CORS options for most routes
+// Restricted CORS - currently buggy .//. undefined path
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
     console.log('Incoming request from origin:', origin);
+    console.log('Allowed origins:', allowedOrigins);
 
     if (!origin) {
+      console.log('Allowing server-side request');
       callback(null, true);
       return;
     }
@@ -55,10 +57,12 @@ const corsOptions = {
         });
 
     if (!isAllowed) {
+      console.log('Origin not allowed:', origin);
       callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
       return;
     }
 
+    console.log('Origin allowed:', origin);
     callback(null, true);
   },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
