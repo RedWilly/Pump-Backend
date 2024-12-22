@@ -39,32 +39,32 @@ if (process.env.NODE_ENV === 'development') {
 // Restricted CORS options for most routes
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
-    console.log('Incoming request from origin:', origin);
+  console.log('Incoming request from origin:', origin);
 
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-    
+      if (!origin) {
+          callback(null, true);
+          return;
+      }
+  
       const isAllowed = allowedOrigins.some(allowedOrigin => {
           if (allowedOrigin.includes('*')){
-            const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '[^.]+') + '$');
-            return regex.test(origin)
+          const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '[^.]+') + '$');
+          return regex.test(origin)
           }
           return allowedOrigin === origin
-        });
+      });
 
-    if (!isAllowed) {
-      callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
-      return;
-    }
+      if (!isAllowed) {
+          callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
+          return;
+      }
 
-    callback(null, true);
+      callback(null, true);
   },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-};
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true
+  };
 
 console.log('Allowed Origins:', allowedOrigins);
 
