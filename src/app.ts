@@ -18,7 +18,8 @@ import { getEventProcessingStatus } from './blockchain/events';
 import volumeRoutes from './routes/volumeRoutes';
 import { generateSitemap, serveSitemapFile } from './controllers/sitemapController';
 import path from 'path';
-import * as tokenController from './controllers/tokenController';
+
+
 
 const app = express();
 const server = http.createServer(app);
@@ -26,58 +27,9 @@ const wss = new WebSocket.Server({ server });
 
 export const prisma = new PrismaClient();
 
-const allowedOrigins = process.env.HOSTED_URL
-  ? process.env.HOSTED_URL.split(',').map(origin => origin.trim())
-  : []; 
-
-// Add localhost origins when in development
-if (process.env.NODE_ENV === 'development') {
-    allowedOrigins.push('http://localhost:3000');
-    allowedOrigins.push('http://localhost:3001');
-}
-
-// Restricted CORS - currently buggy .//. undefined path
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
-    console.log('Incoming request from origin:', origin);
-    console.log('Allowed origins:', allowedOrigins);
-
-    if (!origin) {
-      console.log('Allowing server-side request');
-      callback(null, true);
-      return;
-    }
-    
-      const isAllowed = allowedOrigins.some(allowedOrigin => {
-          if (allowedOrigin.includes('*')){
-            const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '[^.]+') + '$');
-            return regex.test(origin)
-          }
-          return allowedOrigin === origin
-        });
-
-    if (!isAllowed) {
-      console.log('Origin not allowed:', origin);
-      callback(new Error(`CORS error: Origin '${origin}' is not allowed.`));
-      return;
-    }
-
-    console.log('Origin allowed:', origin);
-    callback(null, true);
-  },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-};
-
-console.log('Allowed Origins:', allowedOrigins);
-
-// Public endpoint - allow all origins
-app.get('/api/tokens/without-liquidityEvent', cors(), tokenController.getTokensWithoutLiquidity);
-
-// Apply restricted CORS to all other routes
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
+app.use(cors());
 app.use(bodyParser.json());
 
 app.get('/sitemap.xml', generateSitemap);
@@ -89,6 +41,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/liquidity', liquidityRoutes);
 app.use('/api/price', priceRoutes);
 app.use('/api/volume', volumeRoutes);
+
 
 wss.on('connection', (ws) => {
   console.log('New WebSocket connection');
