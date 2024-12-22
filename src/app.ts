@@ -191,7 +191,6 @@ app.get('/api/events/status', async (req, res) => {
   }
 });
 
-// Error handling middleware (must be defined after all routes)
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   if (err.message && err.message.startsWith('CORS error:')) {
     console.log(err.message);
