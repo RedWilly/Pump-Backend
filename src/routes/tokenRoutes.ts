@@ -1,7 +1,6 @@
 import express from 'express';
 import * as tokenController from '../controllers/tokenController';
 import { generateSitemap } from '../controllers/sitemapController';
-import cors from 'cors';
 
 const router = express.Router();
 
@@ -16,6 +15,7 @@ router.get('/addresses', tokenController.getAllTokenAddresses);
 router.get('/listed', tokenController.getListedTokens);
 router.get('/recent', tokenController.getRecentTokens);
 router.get('/with-liquidityEvent', tokenController.getTokensWithLiquidity);
+router.get('/without-liquidityEvent', tokenController.getTokensWithoutLiquidity);
 router.get('/trending', tokenController.getTrendingTokens);
 
 // Grouped Routes for '/address'
